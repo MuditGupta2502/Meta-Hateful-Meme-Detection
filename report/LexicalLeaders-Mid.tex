@@ -1,0 +1,621 @@
+\documentclass[11pt]{article}
+\usepackage[preprint]{acl}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\renewcommand{\ttdefault}{cmtt}
+
+\title{Multimodal Hateful Meme Detection: Mid-Project Report}
+
+\author{Lexical Leaders \\
+Mudit Gupta \and Viral Shah \and Adarsh Sharma \and Bhautik Ramani \\
+Introduction to Natural Language Processing, March 2026 \\
+\texttt{https://github.com/MuditGupta2502/Meta-Hateful-Meme-Detection}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This mid-submission report presents our project direction and current progress on multimodal hateful meme detection. Our core idea is to detect harmful memes by jointly modeling image and text context with a frozen CLIP backbone and a trainable cross-attention fusion head. So far, we have completed the Phase 1 baseline and a stronger Phase 1 extension based on class-balanced sampling. On the balanced development split, the baseline reaches AUROC 0.7077 and the extension reaches AUROC 0.7306. We also completed a controlled ablation that validates cross-attention over late-fusion concatenation (+0.0399 AUROC). For the planned Phase 2, we will focus on deployment realism (OCR), selective encoder adaptation (LoRA/PEFT), and an ethical safety layer with human-in-the-loop intervention for uncertain or high-risk predictions.
+\end{abstract}
+
+\section{Project Idea and Motivation}
+Hateful memes are difficult to detect because hateful intent usually emerges from \textit{interaction} between image and text, not from one modality in isolation. A seemingly harmless image can become hateful with a specific caption, and a provocative sentence can be benign depending on visual context. This makes the task fundamentally multimodal.
+
+Our project aims to build a practical and reproducible multimodal detection system that is both computationally efficient and extensible. Instead of full end-to-end fine-tuning of very large encoders, we freeze a strong pretrained backbone and train a smaller fusion/classification component. This design is suitable for academic constraints (limited GPU budget) while still allowing methodical experimentation.
+
+\textbf{Primary objective.}
+Given meme image $v$ and text $t$, learn a classifier
+\[
+f(v,t) \rightarrow \hat{y} \in \{0,1\},
+\]
+where $1$ denotes hateful and $0$ denotes non-hateful.
+
+\textbf{Mid-project objectives.}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Build a stable multimodal baseline with frozen CLIP encoders and cross-attention fusion.
+  \item Improve minority-class robustness under class imbalance.
+  \item Validate architecture decisions using controlled ablations.
+  \item Define a realistic second phase with safety and deployment-focused additions.
+\end{itemize}
+
+\section{Background and Related Work}
+The Hateful Memes Challenge \cite{kiela2020hateful} formalized this task with ``benign confounders'' so that unimodal shortcuts fail by design. This motivates fusion architectures that explicitly reason over image-text interactions.
+
+Pretrained vision-language models, especially CLIP \cite{radford2021clip}, provide strong aligned embeddings for image and text. However, direct zero-shot similarity scoring is typically insufficient for subtle hate detection because the decision boundary depends on dataset-specific context and label semantics.
+
+Transformer attention \cite{vaswani2017attention} motivates our cross-attention fusion block, where each modality attends to the other before classification. For imbalanced classification, focal loss \cite{lin2017focal} provides hard-example emphasis that is particularly useful when minority errors are costly.
+
+For the planned second phase, we consider parameter-efficient adaptation via LoRA \cite{hu2022lora} so that representation quality can improve without full encoder fine-tuning. We also include model-risk safeguards inspired by broader responsible-AI moderation practice \cite{weidinger2021ethical}.
+
+\section{Dataset}
+We use the Meta AI Hateful Memes dataset \cite{kiela2020hateful}. The dataset provides image paths, meme text, and binary labels for train/dev splits; the public test split is unlabeled.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Dataset split statistics used in this project.}
+\begin{tabular}{lrrrr}
+\toprule
+Split & Total & Hateful & Non-hateful & Ratio \\
+\midrule
+Train & 8,500 & 3,050 & 5,450 & 1.79:1 \\
+Dev   & 500   & 250   & 250   & 1:1 \\
+Test  & 1,000 & --    & --    & -- \\
+\bottomrule
+\end{tabular}
+\label{tab:data}
+\end{table}
+
+\textbf{Observed properties from EDA.}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Meme text is short (mean \(\approx 11.7\) words), with long-tail stylistic noise.
+  \item The train split is moderately imbalanced, requiring explicit mitigation.
+  \item The development split is balanced and therefore suitable for robust threshold-free ranking metrics (AUROC).
+\end{itemize}
+
+\subsection{Exploratory Data Analysis Summary}
+We performed an initial EDA pass to verify whether training assumptions match the actual data distribution.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Word-count statistics on the training split.}
+\begin{tabular}{lrrrr}
+\toprule
+Class & Mean & Median & Max & 95th pct. \\
+\midrule
+Non-hateful & 11.2 & 10 & 69 & 23 \\
+Hateful & 12.8 & 11 & 70 & 26 \\
+Overall & 11.7 & 10 & 70 & 24 \\
+\bottomrule
+\end{tabular}
+\label{tab:wordstats}
+\end{table}
+
+These numbers confirm that meme text length is comfortably inside CLIP token limits, so truncation is not a dominant error source.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Top frequent content tokens (stop-words removed).}
+\begin{tabular}{ll}
+\toprule
+Hateful cluster examples & Non-hateful cluster examples \\
+\midrule
+``white'', ``black'', ``muslim'' & ``love'', ``happy'', ``friend'' \\
+``illegal'', ``parasite'', ``send'' & ``birthday'', ``dog'', ``cat'' \\
+``terror'', ``country'', ``back'' & ``food'', ``work'', ``today'' \\
+\bottomrule
+\end{tabular}
+\label{tab:topwordsmid}
+\end{table}
+
+The lexical separation is non-trivial but incomplete, reinforcing the need for multimodal context instead of text-only filtering.
+
+\section{Proposed Methodology and Architecture}
+\subsection{Model Overview}
+Our baseline architecture has three stages:
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Frozen multimodal encoding:} CLIP ViT-B/32 encodes image and text into 512-d vectors.
+  \item \textbf{Bidirectional cross-attention fusion:} image queries attend to text features and text queries attend to image features.
+  \item \textbf{Classification head:} a lightweight MLP predicts hateful vs non-hateful.
+\end{enumerate}
+
+Only the fusion and classifier layers are trainable (about 2.4M parameters), while the CLIP backbone remains frozen (about 151M parameters).
+
+\subsection{Training Design}
+\textbf{Loss.} Weighted focal loss with class weights \([1.0,\,1.786]\) and \(\gamma=2\).
+
+\textbf{Optimizer and schedule.} AdamW, learning rate \(10^{-4}\), cosine decay with linear warmup.
+
+\textbf{Class imbalance strategy.}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Baseline: weighted focal loss only.
+  \item Phase 1 extension: weighted focal loss + \texttt{WeightedRandomSampler} to create near-balanced sampling per epoch.
+\end{itemize}
+
+\subsection{Ablation Methodology}
+To test whether cross-attention itself is useful, we compare:
+\begin{itemize}[leftmargin=*,nosep]
+  \item \textbf{Late Fusion:} concatenation of frozen CLIP image/text embeddings + MLP.
+  \item \textbf{Cross-Attention Fusion:} full proposed architecture.
+\end{itemize}
+All other training choices are held fixed.
+
+\subsection{Implementation Footprint}
+\begin{table}[h]
+\centering
+\small
+\caption{Parameter and compute footprint (current implementation).}
+\begin{tabular}{lrr}
+\toprule
+Component & Parameters & Trainable \\
+\midrule
+CLIP ViT-B/32 backbone & \(\sim\)151.3M & No \\
+Cross-attention fusion block & \(\sim\)2.1M & Yes \\
+Classification head (MLP) & \(\sim\)0.3M & Yes \\
+\midrule
+Total & \(\sim\)153.7M & \(\sim\)2.4M (1.6\%) \\
+\bottomrule
+\end{tabular}
+\label{tab:params}
+\end{table}
+
+This parameter-efficiency is important for reproducibility on limited hardware (Kaggle T4 class GPUs) while still allowing architecture-level experimentation.
+
+\subsection{Core Objective Functions}
+The classifier is trained with weighted focal loss:
+\[
+\mathcal{L}_{\text{focal}} = -\alpha_t (1-p_t)^{\gamma}\log(p_t),
+\]
+where \(p_t\) is the model probability assigned to the true class, \(\gamma=2\), and \(\alpha_t\) follows class imbalance.
+
+For a batch \(\mathcal{B}\), the optimization objective is:
+\[
+\min_\theta \; \frac{1}{|\mathcal{B}|} \sum_{(v_i,t_i,y_i)\in\mathcal{B}}
+\mathcal{L}_{\text{focal}}\big(y_i, f_\theta(v_i,t_i)\big).
+\]
+
+In the cross-attention module, image token representations \(V\) attend to text tokens \(T\), and text attends back to image:
+\[
+\text{Attn}(Q,K,V)=\text{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)V.
+\]
+This bidirectional interaction helps the model capture meaning that only emerges from image-text pairing.
+
+\section{Evaluation Options and Metrics}
+We evaluate on the 500-sample balanced dev split.
+
+\textbf{Primary metric:} AUROC (threshold-independent ranking quality).
+
+\textbf{Secondary metrics:} Accuracy, F1 (hateful class), Macro-F1, confusion matrix.
+
+\textbf{Why these metrics.}
+\begin{itemize}[leftmargin=*,nosep]
+  \item AUROC is robust to threshold choice and is widely used for this task setup.
+  \item Macro-F1 captures class-balance quality and guards against one-class dominance.
+  \item Confusion matrices support practical moderation analysis (false positives vs false negatives).
+\end{itemize}
+
+We report best checkpoints by AUROC and track metric trajectories across epochs for overfitting diagnosis.
+
+\begin{table*}[t]
+\centering
+\small
+\caption{Main hyperparameters for the completed mid-phase experiments.}
+\begin{tabular}{ll}
+\toprule
+Category & Setting \\
+\midrule
+Backbone & \texttt{openai/clip-vit-base-patch32} (frozen) \\
+Fusion module & Bidirectional cross-attention, 4 heads \\
+Classifier head & 3-layer MLP with dropout \\
+Loss & Weighted focal loss, \(\gamma=2\), class weights \([1.0,1.786]\) \\
+Optimizer & AdamW \\
+Learning rate & \(1\times 10^{-4}\) \\
+Weight decay & \(1\times 10^{-4}\) \\
+Scheduler & Cosine decay with linear warmup \\
+Batch size & 32 \\
+Phase 1 baseline & 10 epochs, warmup 100 \\
+Phase 1 extension & 20 epochs, warmup 200, weighted random sampler \\
+Primary checkpoint criterion & Validation AUROC \\
+Runtime footprint & Approximately 35 minutes (10-epoch run, Kaggle T4) \\
+\bottomrule
+\end{tabular}
+\label{tab:hyperparams}
+\end{table*}
+
+\section{Interim Experimental Results}
+\subsection{Phase 1 Baseline (10 epochs)}
+\begin{table*}[t]
+\centering
+\small
+\caption{Phase 1 baseline: epoch-wise validation trajectory.}
+\begin{tabular}{rccccc}
+\toprule
+Epoch & Train Loss & Val Loss & Val AUROC & Val F1 & Macro-F1 \\
+\midrule
+1 & 0.298 & 0.356 & 0.639 & 0.600 & 0.531 \\
+2 & 0.266 & 0.346 & 0.677 & 0.644 & 0.611 \\
+3 & 0.245 & 0.344 & 0.681 & 0.665 & 0.633 \\
+4 & 0.229 & 0.354 & 0.695 & 0.650 & 0.629 \\
+5 & 0.219 & 0.358 & 0.702 & 0.695 & 0.664 \\
+6 & 0.207 & 0.359 & 0.706 & 0.689 & 0.670 \\
+7 & 0.196 & 0.367 & 0.707 & 0.682 & 0.666 \\
+8 & 0.186 & 0.381 & 0.703 & 0.673 & 0.664 \\
+9 & 0.178 & 0.389 & 0.708 & 0.664 & 0.658 \\
+10 & 0.170 & 0.395 & 0.705 & 0.655 & 0.653 \\
+\bottomrule
+\end{tabular}
+\label{tab:phase1epochs}
+\end{table*}
+
+\subsection{Phase 1 Extension (20 epochs, balanced sampler)}
+\begin{table*}[t]
+\centering
+\small
+\caption{Phase 1 extension: epoch-wise validation trajectory (best AUROC at epoch 8).}
+\begin{tabular}{rccccc}
+\toprule
+Epoch & Train Loss & Val Loss & Val AUROC & Val F1 & Macro-F1 \\
+\midrule
+1 & 0.301 & 0.314 & 0.6696 & 0.6918 & 0.5441 \\
+2 & 0.251 & 0.318 & 0.6831 & 0.6875 & 0.5660 \\
+3 & 0.229 & 0.319 & 0.7005 & 0.7018 & 0.6206 \\
+4 & 0.208 & 0.342 & 0.7049 & 0.6985 & 0.6349 \\
+5 & 0.188 & 0.345 & 0.7206 & 0.7018 & 0.6532 \\
+6 & 0.164 & 0.408 & 0.7147 & 0.6991 & 0.6619 \\
+7 & 0.135 & 0.555 & 0.7251 & 0.6534 & 0.6520 \\
+8 & 0.113 & 0.538 & 0.7306 & 0.6667 & 0.6700 \\
+9 & 0.091 & 0.695 & 0.7286 & 0.6345 & 0.6512 \\
+10 & 0.077 & 0.736 & 0.7301 & 0.6126 & 0.6516 \\
+11 & 0.062 & 0.820 & 0.7294 & 0.6000 & 0.6429 \\
+12 & 0.053 & 0.890 & 0.7305 & 0.6233 & 0.6600 \\
+13 & 0.047 & 0.986 & 0.7221 & 0.5701 & 0.6242 \\
+14 & 0.039 & 0.953 & 0.7286 & 0.6154 & 0.6554 \\
+15 & 0.036 & 1.020 & 0.7247 & 0.5945 & 0.6418 \\
+16 & 0.029 & 1.161 & 0.7258 & 0.5841 & 0.6365 \\
+17 & 0.028 & 1.158 & 0.7268 & 0.5874 & 0.6387 \\
+18 & 0.029 & 1.178 & 0.7274 & 0.5855 & 0.6383 \\
+19 & 0.025 & 1.184 & 0.7269 & 0.5808 & 0.6342 \\
+20 & 0.028 & 1.182 & 0.7271 & 0.5794 & 0.6324 \\
+\bottomrule
+\end{tabular}
+\label{tab:phase1extepochs}
+\end{table*}
+
+\subsection{Interim Findings}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Consistent gain from balanced sampling:} the extension improves AUROC by +0.0229 over baseline.
+  \item \textbf{Best operating point appears early:} AUROC peaks around epoch 8 in the extension, after which validation loss rises sharply.
+  \item \textbf{Ablation confirms fusion design:} explicit cross-attention outperforms simple concatenation by +0.0399 AUROC.
+\end{itemize}
+
+\subsection{Qualitative Error Analysis (Interim)}
+We manually inspected representative false positives and false negatives from dev predictions and grouped them into recurring error modes.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Interim failure taxonomy from manual inspection.}
+\begin{tabularx}{\columnwidth}{lX}
+\toprule
+Category & Typical pattern \\
+\midrule
+Sarcasm / irony ambiguity & Surface text appears harmless but implied intent is hateful in cultural context. \\
+Context beyond meme frame & External political/cultural references not visible in image-text pair. \\
+Text distortion / stylization & Deliberate misspellings, split words, and symbol substitutions. \\
+Entity confusion & Model latches on identity words without full relational context. \\
+Image cue over-reliance & Salient visual feature dominates even when text negates hateful intent. \\
+\bottomrule
+\end{tabularx}
+\label{tab:failuretax}
+\end{table}
+
+These observations guide planned Phase 2 work: OCR robustness, stronger context adaptation (LoRA), and abstention plus human review for uncertain cases.
+
+\section{Progress So Far}
+\subsection{Completed Work}
+\begin{table*}[t]
+\centering
+\small
+\caption{Progress summary (completed, ongoing, and planned).}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+Work Item & Status & Notes \\
+\midrule
+Dataset loading and validation & Completed & Verified paths, labels, and train/dev split consistency. \\
+Baseline model (frozen CLIP + cross-attention) & Completed & End-to-end training and evaluation pipeline finalized. \\
+Baseline experiment (10 epochs) & Completed & Best AUROC 0.7077; best Accuracy 67.0\%. \\
+Phase 1 extension (balanced sampler, 20 epochs) & Completed & Best AUROC 0.7306 at epoch 8; +0.0229 over baseline. \\
+Ablation (late fusion vs cross-attention) & Completed & Cross-attention +0.0399 AUROC over late fusion. \\
+Error analysis and case categorization & Ongoing & Collecting examples for text-dominant vs image-dominant failures. \\
+Phase 2 safety design (human intervention policy) & Ongoing & Defining confidence thresholds and escalation flow. \\
+OCR-based end-to-end inference & Planned & Replace dataset text dependence with OCR extraction at inference. \\
+LoRA/PEFT adaptation experiments & Planned & Adapt selective CLIP layers without full fine-tuning. \\
+Safety evaluation protocol & Planned & Measure abstention, escalation rate, and reviewer agreement. \\
+\bottomrule
+\end{tabularx}
+\label{tab:progress}
+\end{table*}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Internal performance comparison on dev split.}
+\begin{tabular}{lcc}
+\toprule
+Model Variant & AUROC & Accuracy \\
+\midrule
+Random baseline & 0.5000 & 50.0\% \\
+CLIP zero-shot (cosine) & \(\approx\)0.52 & \(\approx\)52\% \\
+Phase 1 baseline & 0.7077 & 67.0\% \\
+Phase 1 extension & 0.7306 & 67.0\% \\
+\bottomrule
+\end{tabular}
+\label{tab:results}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Ablation result (same training recipe, 10 epochs).}
+\begin{tabular}{lcc}
+\toprule
+Fusion Strategy & AUROC & Macro-F1 \\
+\midrule
+Late Fusion & 0.6682 & 0.6127 \\
+Cross-Attention Fusion & 0.7081 & 0.6320 \\
+\midrule
+\(\Delta\) (CrossAttn - LateFusion) & +0.0399 & +0.0193 \\
+\bottomrule
+\end{tabular}
+\label{tab:ablation}
+\end{table}
+
+\textbf{Interpretation.}
+The project has passed key mid-stage milestones: (i) stable multimodal baseline, (ii) measurable gain from class-balanced training, and (iii) architectural validation through ablation. The next bottleneck is not training stability but deployment realism and risk-sensitive moderation quality.
+
+\subsection{Ongoing Work}
+Current work focuses on three tracks:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Failure taxonomy:} identify recurring failure modes (sarcasm, OCR-like text distortions, rare cultural context).
+  \item \textbf{Threshold policy design:} define operating thresholds for automatic accept/reject and \emph{escalate-to-human} cases.
+  \item \textbf{Implementation cleanup:} improve experiment tracking and reproducibility notes for final submission.
+\end{itemize}
+
+\subsection{Planned Phase 2: Safety + Realism}
+Planned Phase 2 expands the current system with practical moderation safeguards.
+
+\textbf{Human-in-the-loop intervention.}
+For uncertain or high-risk cases, the model will abstain and escalate to manual review. We will define:
+\begin{itemize}[leftmargin=*,nosep]
+  \item confidence bands for auto-decision vs human escalation,
+  \item reviewer guideline checklist,
+  \item audit logs for traceability and post-hoc correction,
+  \item feedback loop to refine thresholds and retraining datasets.
+\end{itemize}
+
+\textbf{Additional deliverables.}
+\begin{itemize}[leftmargin=*,nosep]
+  \item OCR pipeline for end-to-end inference.
+  \item LoRA-based adaptation of selected CLIP blocks.
+  \item Robustness tests with noisy overlays and spelling perturbations.
+\end{itemize}
+
+\subsection{Planned Phase 2 Experiment Matrix}
+To keep Phase 2 systematic, we predefine an experiment matrix instead of ad-hoc runs.
+
+\begin{table*}[t]
+\centering
+\small
+\caption{Planned Phase 2 experiment matrix (design before execution).}
+\begin{tabularx}{\textwidth}{l l l X}
+\toprule
+Track & Experiment ID & Core change & Evaluation focus \\
+\midrule
+OCR realism & P2-OCR-1 & OCR extraction with default parser & End-to-end AUROC vs text-field oracle \\
+OCR realism & P2-OCR-2 & OCR + normalization (case, punctuation, spacing) & Robustness under noisy text rendering \\
+PEFT adaptation & P2-LORA-1 & LoRA on final CLIP attention blocks & AUROC/F1 gain per trainable parameter \\
+PEFT adaptation & P2-LORA-2 & LoRA rank sweep (r=4,8,16) & Cost-quality tradeoff \\
+Safety policy & P2-SAFE-1 & Confidence band with abstention & Escalation rate and retained accuracy \\
+Safety policy & P2-SAFE-2 & High-risk keyword trigger for human review & Harm-weighted error reduction \\
+Human feedback & P2-HITL-1 & Reviewer decision logging & Agreement and correction usefulness \\
+Stress testing & P2-ROB-1 & Character noise and overlay perturbations & Performance degradation profile \\
+\bottomrule
+\end{tabularx}
+\label{tab:p2matrix}
+\end{table*}
+
+\section{Ethical AI and Safety Plan}
+Because this project targets harmful content moderation, we explicitly include a safety plan in technical development.
+
+\subsection{Human Intervention Policy}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Low-confidence abstention:} if model confidence falls into a predefined uncertainty band, no automatic moderation action is taken.
+  \item \textbf{Manual escalation:} uncertain/high-impact samples are routed to human reviewers.
+  \item \textbf{Dual-review for critical cases:} content involving protected attributes can trigger secondary review.
+  \item \textbf{Auditability:} model score, threshold band, and reviewer decision are logged for later audit.
+\end{itemize}
+
+\subsection{Safety Evaluation Options}
+In planned Phase 2, we will add safety-specific evaluation dimensions alongside AUROC/F1:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Escalation rate:} fraction of samples routed to human review.
+  \item \textbf{Reviewer agreement:} consistency between independent reviewers for escalated cases.
+  \item \textbf{Harm-weighted error analysis:} separate accounting of false negatives in high-risk categories.
+  \item \textbf{Turnaround viability:} average time from escalation to final decision.
+\end{itemize}
+
+This framing ensures the project remains not only accurate but also safer for real moderation workflows.
+
+\subsection{Risk Register and Mitigation}
+\begin{table}[h]
+\centering
+\small
+\caption{Current project risks and mitigations.}
+\begin{tabularx}{\columnwidth}{lX}
+\toprule
+Risk & Mitigation \\
+\midrule
+Overfitting after peak epoch & Early-stop checkpoints by AUROC and restrict deployment to validated windows. \\
+OCR extraction noise & Add text normalization and evaluate noisy synthetic overlays before rollout. \\
+Unsafe false negatives & Introduce abstention and mandatory manual review for uncertainty/high-risk bands. \\
+Compute budget limits & Use PEFT (LoRA) instead of full backbone fine-tuning. \\
+Annotation subjectivity & Reviewer guidelines + disagreement resolution + audit logs. \\
+\bottomrule
+\end{tabularx}
+\label{tab:risks}
+\end{table}
+
+\section{Success Criteria and Final Evaluation Plan}
+To avoid ambiguous project completion criteria, we define quantitative and process-level targets in advance.
+
+\subsection{Quantitative Targets}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Primary ranking quality target:} improve or maintain AUROC relative to the current Phase 1 extension benchmark (0.7306) after introducing OCR and safety policies.
+  \item \textbf{Balanced performance target:} maintain Macro-F1 close to AUROC improvements so that gains are not caused by one-class bias.
+  \item \textbf{Safety-operational target:} ensure uncertain/high-risk routing does not collapse coverage (i.e., escalation rate remains practical for human moderation bandwidth).
+\end{itemize}
+
+\subsection{Operational and Reporting Targets}
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Reproducibility target:} every table in the final report must map to a runnable command and a saved configuration.
+  \item \textbf{Traceability target:} reviewer interventions for escalated cases should be logged with reasons and outcome labels.
+  \item \textbf{Error-analysis target:} final write-up should include at least one validated mitigation for each major failure category in Table~\ref{tab:failuretax}.
+\end{itemize}
+
+\begin{table*}[t]
+\centering
+\small
+\caption{Final evaluation checklist aligned with project objectives.}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+Objective & Acceptance signal & Evidence artifact \\
+\midrule
+Strong multimodal baseline & Stable re-run with near-identical trend & Training logs + checkpoint metrics \\
+Class-imbalance robustness & Extension outperforms baseline on AUROC/Macro-F1 & Comparative metrics table and script output \\
+Architectural validation & Cross-attention keeps advantage over late fusion & Ablation result table and run logs \\
+Deployment realism & OCR-enabled path evaluated end-to-end & OCR experiment report and error examples \\
+Ethical safety integration & Human-in-the-loop escalation policy operational & Escalation statistics + reviewer protocol \\
+Project reproducibility & Commands and configs recreate all major results & README + config snapshots + command list \\
+\bottomrule
+\end{tabularx}
+\label{tab:successchecklist}
+\end{table*}
+
+\section{Team Organization and Execution Workflow}
+We split work by technical tracks while keeping weekly integration points to avoid drift between modeling, data processing, and safety objectives.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Working allocation for the remaining project phase.}
+\begin{tabularx}{\columnwidth}{lX}
+\toprule
+Track owner(s) & Responsibility \\
+\midrule
+Modeling track & LoRA/PEFT experiments, training stability checks, ablation updates. \\
+Data/OCR track & OCR pipeline integration, normalization, and noisy text stress testing. \\
+Safety track & Confidence thresholds, escalation logic, reviewer guideline sheet, audit logs. \\
+Evaluation/report track & Metrics consolidation, error analysis write-up, timeline tracking. \\
+\bottomrule
+\end{tabularx}
+\label{tab:roles}
+\end{table}
+
+\textbf{Execution protocol.}
+\begin{itemize}[leftmargin=*]
+  \item Weekly experiment freeze: only validated runs enter report tables.
+  \item Shared artifact naming convention: run ID + config hash + timestamp.
+  \item Cross-track review before merge: modeling updates and safety policy updates are reviewed together to avoid metric-only optimization.
+\end{itemize}
+
+This workflow is designed to keep the final submission balanced across model quality, safety, and reproducibility instead of optimizing a single headline metric.
+
+\section{Tentative Timeline}
+\begin{table}[h]
+\centering
+\small
+\caption{Tentative timeline from mid-submission to final evaluation.}
+\begin{tabularx}{\columnwidth}{lX}
+\toprule
+Time Window & Planned Deliverables \\
+\midrule
+Mar 9--Mar 16 & Finalize failure taxonomy; freeze Phase 2 safety policy draft. \\
+Mar 17--Mar 24 & Implement OCR pipeline and confidence-based escalation logic. \\
+Mar 25--Apr 2 & Run LoRA/PEFT experiments; compare with frozen-backbone extension. \\
+Apr 3--Apr 10 & Safety evaluation: escalation rate, reviewer agreement, error-cost analysis. \\
+Apr 11--Apr 18 & Consolidate results, finalize report/figures, prepare viva notes. \\
+\bottomrule
+\end{tabularx}
+\label{tab:timeline}
+\end{table}
+
+\section{Repository and Reproducibility}
+The public repository is:
+\begin{center}
+\url{https://github.com/MuditGupta2502/Meta-Hateful-Meme-Detection}
+\end{center}
+
+Main reproducibility commands used in this mid phase are:
+\begin{itemize}[leftmargin=*]
+  \item \texttt{python train.py --epochs 10 --batch\_size 32 --lr 1e-4}
+  \item \texttt{python train.py --config configs/config\_smote.yaml}
+  \item \texttt{python train\_ablation.py --config configs/config.yaml --epochs 10}
+  \item \texttt{python train\_ablation.py --variants late\_fusion cross\_attention}
+\end{itemize}
+
+\section{Conclusion}
+This mid-submission confirms that our project direction is viable and evidence-driven. We have already completed the core multimodal architecture and demonstrated consistent gains through a Phase 1 extension and ablation experiments. The planned Phase 2 is now focused on what the current system still lacks for realistic deployment: OCR integration, parameter-efficient adaptation, and explicit ethical safety mechanisms with human intervention on uncertain/high-risk samples.
+
+\begin{thebibliography}{9}
+
+\bibitem[Hu et~al., 2022]{hu2022lora}
+Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li,
+Shean Wang, Lu Wang, and Weizhu Chen. 2022.
+\newblock LoRA: Low-Rank Adaptation of Large Language Models.
+\newblock In \textit{International Conference on Learning Representations (ICLR)}.
+
+\bibitem[Kiela et~al., 2020]{kiela2020hateful}
+Douwe Kiela, Hamed Firooz, Aravind Mohan, Vedanuj Goswami,
+Amanpreet Singh, Pratik Ringshia, and Davide Testuggine. 2020.
+\newblock The Hateful Memes Challenge: Detecting Hate Speech in Multimodal Memes.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}.
+
+\bibitem[Lin et~al., 2017]{lin2017focal}
+Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Dollar. 2017.
+\newblock Focal Loss for Dense Object Detection.
+\newblock In \textit{IEEE International Conference on Computer Vision (ICCV)}.
+
+\bibitem[Radford et~al., 2021]{radford2021clip}
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh,
+Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin,
+Jack Clark, Gretchen Krueger, and Ilya Sutskever. 2021.
+\newblock Learning Transferable Visual Models From Natural Language Supervision.
+\newblock In \textit{International Conference on Machine Learning (ICML)}.
+
+\bibitem[Vaswani et~al., 2017]{vaswani2017attention}
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit,
+Llion Jones, Aidan N. Gomez, Lukasz Kaiser, and Illia Polosukhin. 2017.
+\newblock Attention Is All You Need.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}.
+
+\bibitem[Weidinger et~al., 2021]{weidinger2021ethical}
+Laura Weidinger, John Mellor, Maribeth Rauh, Conor Griffin,
+Jonathan Uesato, Po-Sen Huang, Myra Cheng, and others. 2021.
+\newblock Ethical and Social Risks of Harm from Language Models.
+\newblock \textit{arXiv preprint arXiv:2112.04359}.
+
+\end{thebibliography}
+
+\end{document}
