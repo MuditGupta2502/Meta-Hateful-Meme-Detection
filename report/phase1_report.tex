@@ -21,6 +21,7 @@
 \usepackage{tcolorbox}
 \usepackage{pgfplots}
 \usepackage{tikz}
+\usetikzlibrary{positioning}
 \usepackage{array}
 \usepackage{colortbl}
 \usepackage{soul}
@@ -142,7 +143,7 @@
   \begin{tcolorbox}[highlight, width=0.92\textwidth]
     \centering
     {\Huge\bfseries\color{primaryblue} Multimodal Hateful Meme\\[0.3cm] Detection}\\[0.5cm]
-    {\large\color{darkgray} with Counterfactual Edit Generation}
+    {\large\color{darkgray} with Class-Balanced Training and Fusion Ablation}
   \end{tcolorbox}
 
   \vspace{1.2cm}
@@ -220,7 +221,7 @@ This project develops a \textbf{multimodal deep learning framework} for hateful 
   \item Jointly encodes image and text into a shared semantic space using a frozen CLIP (Contrastive Language-Image Pre-training) encoder.
   \item Fuses the two modality representations using a \textit{bidirectional cross-attention mechanism}, allowing each modality to be contextualised by the other.
   \item Classifies the fused representation using a lightweight MLP classifier.
-  \item (Phase 2) Generates \textit{counterfactual text edits}---minimal textual changes that neutralise hateful intent while preserving original semantics.
+  \item (Phase 2) Improves robustness under class imbalance using a SMOTE-style balanced sampler (WeightedRandomSampler), longer training, and controlled ablation experiments.
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -235,13 +236,17 @@ Given a meme $m = (v, t)$ where $v \in \mathbb{R}^{H \times W \times 3}$ is the 
 f(v, t) \;\longrightarrow\; \hat{y} \in \{0, 1\}
 \]
 
-where $\hat{y} = 1$ indicates a \textit{hateful} meme and $\hat{y} = 0$ indicates \textit{non-hateful}. The secondary objective (Phase 2) is counterfactual generation:
+where $\hat{y} = 1$ indicates a \textit{hateful} meme and $\hat{y} = 0$ indicates \textit{non-hateful}. The secondary objective in our completed Phase 2 is to improve class-imbalance robustness while preserving the same core architecture:
 
 \[
-g(v, t) \;\longrightarrow\; t' \quad \text{such that} \quad f(v, t') = 0 \;\text{ and }\; \mathrm{sim}(t, t') \geq \tau
+\Delta\text{AUROC}_{\text{phase2}} = \text{AUROC}_{\text{phase2}} - \text{AUROC}_{\text{phase1}} > 0
 \]
 
-where $t'$ is a minimally edited version of $t$ that flips the hateful prediction, and $\tau$ is a semantic similarity threshold.
+and to validate the fusion design through ablation:
+
+\[
+\Delta\text{AUROC}_{\text{fusion}} = \text{AUROC}_{\text{cross-attn}} - \text{AUROC}_{\text{late-fusion}} > 0
+\]
 
 \subsection{Key Challenges}
 
@@ -292,9 +297,12 @@ Each sample in the dataset is stored as a JSON line with three fields:
 
 The training set imbalance (1.79:1) requires mitigation to prevent the model from being biased towards predicting the majority (non-hateful) class. We address this via:
 \begin{enumerate}
-  \item \textbf{Class-weighted Focal Loss} with weight vector $\mathbf{w} = [1.0,\ 1.786]$.
+  \item \textbf{Class-weighted Focal Loss} with weight vector $\mathbf{w} = [1.0,\ 1.786]$ (used in both Phase 1 and Phase 2).
   \item The \textbf{focal modulation term} $(1 - p_t)^\gamma$ further down-weights easy majority-class samples.
+  \item \textbf{Phase 2 balanced oversampling} via \texttt{WeightedRandomSampler}, which increases the draw probability of minority hateful samples to create a near 50:50 effective class mix per epoch.
 \end{enumerate}
+
+\textit{Note:} this is SMOTE-style oversampling for image datasets; no synthetic pixel-space meme images are generated.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Exploratory Data Analysis}
@@ -805,6 +813,10 @@ At epoch 1, the model shows asymmetric behaviour: high recall for hateful class 
 
 Our Phase 1 model outperforms the CLIP zero-shot baseline by $+18.8\%$ AUROC and matches the ViLBERT-CC concat baseline while training only 1.6\% of total parameters. Phase 2 balanced-sampler training (Section~\ref{subsec:phase2}) pushes AUROC to \textbf{0.7306}, surpassing the Deshpande \& Mani~\cite{deshpande2021interpretable} GBDT+LSTM system (AUROC 0.7272). The Tchokote \& Tagne~\cite{tchokote2025effective} system achieves 81.80\% accuracy with heavier machinery (RoBERTa~+~ResNet50~+~SMOTE~+~iPCA); closing this gap is the target of a future Phase 3 with LoRA-based encoder unfreezing.
 
+\begin{tcolorbox}[warning, title={Evaluation Protocol Note}]
+The cross-paper comparison is \textbf{indicative, not strictly like-for-like}: our scores are reported on the 500-sample balanced development split under our training recipe, while published papers may use different splits, preprocessing, and evaluation protocols. We include these numbers as external reference points, not as a claim of identical experimental conditions.
+\end{tcolorbox}
+
 \subsection{Phase 2: Class-Balanced Training (SMOTE-Style, 20 Epochs)}
 \label{subsec:phase2}
 
@@ -1013,11 +1025,23 @@ hateful-meme-project/
 
 \subsection{Reproducibility}
 
-The full training run is reproducible via a single command:
+The key experiments are reproducible via the following commands:
 
-\begin{lstlisting}[language=bash, caption={Training command}]
+\begin{lstlisting}[language=bash, caption={Phase 1 baseline training}]
 python train.py --epochs 10 --batch_size 32 --lr 1e-4
 \end{lstlisting}
+
+\begin{lstlisting}[language=bash, caption={Phase 2 balanced-sampler training (20 epochs)}]
+python train.py --config configs/config_smote.yaml
+\end{lstlisting}
+
+\begin{lstlisting}[language=bash, caption={Ablation run used in report (Option D)}]
+python train_ablation.py --config configs/config.yaml --epochs 10 --variants late_fusion cross_attention
+\end{lstlisting}
+
+For exact script snapshots and runtime environment, the corresponding Kaggle notebooks are linked on the title page.
+
+\textit{Determinism note:} the current training scripts do not hard-fix global random seeds, so small run-to-run fluctuations are expected (typically within a few thousandths of AUROC).
 
 The configuration file \texttt{configs/config.yaml} documents all default values, and CLI arguments can override any hyperparameter.
 
@@ -1031,7 +1055,7 @@ The configuration file \texttt{configs/config.yaml} documents all default values
   \item \textbf{Efficient design:} Freezing the CLIP backbone reduces training time to $\approx 35$ minutes on a free T4 GPU while achieving competitive AUROC.
   \item \textbf{Principled fusion:} Bidirectional cross-attention models the interaction between modalities explicitly---a direct response to the core challenge of implicit multimodal hate.
   \item \textbf{Imbalance handling:} The weighted focal loss effectively prevents the model from collapsing to majority-class predictions, as evidenced by the F1 scores improving to $0.69+$ by epoch 5.
-  \item \textbf{Modular, extensible code:} The architecture is designed to plug in Phase 2 components (OCR pipeline, counterfactual generator) without modifying the classifier.
+  \item \textbf{Modular, extensible code:} The architecture supports iterative upgrades (balanced sampling, extended training, and ablation modules) without redesigning the backbone.
 \end{enumerate}
 
 \subsection{Limitations and Observations}
@@ -1039,25 +1063,27 @@ The configuration file \texttt{configs/config.yaml} documents all default values
 \begin{enumerate}
   \item \textbf{Mild overfitting from epoch 4:} Validation loss rises while training loss continues falling. Potential mitigations (for Phase 2): early stopping, stronger dropout, data augmentation.
   \item \textbf{F1 peak earlier than AUROC peak:} Best binary F1 ($0.6945$) occurs at epoch 5, while best AUROC ($0.7077$) occurs at epoch 9. The best model is saved by AUROC (the official metric), but in a real-world moderation context F1 may be more operationally relevant.
-  \item \textbf{No OCR:} Currently, text is taken directly from the dataset's \texttt{text} field. In real-world deployment, text must be extracted via OCR. This is a Phase 2 objective.
+  \item \textbf{No OCR:} Currently, text is taken directly from the dataset's \texttt{text} field. In real-world deployment, text must be extracted via OCR. This is deferred to Phase 3.
   \item \textbf{Fixed CLIP representations:} Frozen encoders cannot adapt to the specific domain of memes, which differ from the Internet images CLIP was trained on (different visual aesthetics, font overlays, etc.).
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Phase 2 Plan}
+\section{Phase 3 Plan}
 % ─────────────────────────────────────────────────────────────────────────────
 
-The remaining 50--55\% of the project builds upon the Phase 1 classifier to address explainability and robustness:
+With Phase 2 completed (balanced sampling + 20-epoch training + ablation), the next stage focuses on lifting the frozen-backbone ceiling and improving deployment realism:
 
 \begin{table}[H]
   \centering
-  \caption{Phase 2 planned deliverables}
+  \caption{Phase 3 planned deliverables}
   \renewcommand{\arraystretch}{1.35}
   \begin{tabularx}{\textwidth}{lX}
     \toprule
     \rowcolor{primaryblue!15}
     \textbf{Component} & \textbf{Description} \\
     \midrule
+    LoRA/PEFT Unfreezing &
+      Add low-rank adapters on CLIP attention blocks with very small learning rates to adapt representations to meme-specific semantics without full fine-tuning. \\
     OCR Pipeline &
       Integrate pytesseract/EasyOCR to extract text directly from meme images, enabling fully end-to-end inference without ground-truth text labels. \\
     Counterfactual Generator &
@@ -1079,9 +1105,9 @@ The remaining 50--55\% of the project builds upon the Phase 1 classifier to addr
 \section{Conclusion}
 % ─────────────────────────────────────────────────────────────────────────────
 
-Phase 1 of the Multimodal Hateful Meme Detection project has been \textbf{completed successfully}. We have designed, implemented, trained, and evaluated a full multimodal classification pipeline that achieves:
+Phase 1 and Phase 2 of the Multimodal Hateful Meme Detection project have been \textbf{completed successfully}. We have designed, implemented, trained, and evaluated a full multimodal classification pipeline that achieves:
 
-\begin{tcolorbox}[result, title={Phase 1 Summary of Results}]
+\begin{tcolorbox}[result, title={Phase 1 Baseline Summary}]
 \begin{itemize}
   \item \textbf{AUROC: 0.7077} on the balanced 500-sample development set
   \item \textbf{Accuracy: 67.0\%} (best checkpoint at epoch 6)
