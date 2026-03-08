@@ -439,8 +439,8 @@ Current work focuses on three tracks:
   \item \textbf{Implementation cleanup:} improve experiment tracking and reproducibility notes for final submission.
 \end{itemize}
 
-\subsection{Planned Phase 2: Safety + Realism}
-Planned Phase 2 expands the current system with practical moderation safeguards.
+\subsection{Planned Phase 2: Counterfactual Editing + Safety + Realism}
+Planned Phase 2 expands the current system with practical moderation safeguards and generation-based counterfactual intervention.
 
 \textbf{Human-in-the-loop intervention.}
 For uncertain or high-risk cases, the model will abstain and escalate to manual review. We will define:
@@ -453,10 +453,15 @@ For uncertain or high-risk cases, the model will abstain and escalate to manual 
 
 \textbf{Additional deliverables.}
 \begin{itemize}[leftmargin=*,nosep]
+  \item Counterfactual text editing module to minimally rewrite hateful meme text into non-hateful alternatives while preserving core semantics.
+  \item Counterfactual image generation module to produce non-hateful image variants from hateful memes via CLIP latent editing and decoding.
   \item OCR pipeline for end-to-end inference.
   \item LoRA-based adaptation of selected CLIP blocks.
   \item Robustness tests with noisy overlays and spelling perturbations.
 \end{itemize}
+
+\textbf{Counterfactual image-generation direction.}
+Given mentor feedback, we will prototype an embedding-space intervention pipeline: encode meme image to CLIP representation, identify and suppress hate-associated latent directions (including SAE-style sparse feature editing as a candidate), then decode the edited representation into a non-hateful image candidate. The edited image will be evaluated for (i) label flip away from hateful, (ii) semantic preservation, and (iii) visual quality.
 
 \subsection{Planned Phase 2 Experiment Matrix}
 To keep Phase 2 systematic, we predefine an experiment matrix instead of ad-hoc runs.
@@ -471,6 +476,9 @@ Track & Experiment ID & Core change & Evaluation focus \\
 \midrule
 OCR realism & P2-OCR-1 & OCR extraction with default parser & End-to-end AUROC vs text-field oracle \\
 OCR realism & P2-OCR-2 & OCR + normalization (case, punctuation, spacing) & Robustness under noisy text rendering \\
+Text counterfactuals & P2-CF-TEXT-1 & Minimal hateful-to-benign text rewrite generator & Label flip rate and semantic preservation \\
+Image counterfactuals & P2-CF-IMG-1 & CLIP embedding intervention + decoder generation & Non-hateful conversion rate and visual fidelity \\
+Image counterfactuals & P2-CF-IMG-2 & SAE-style sparse latent editing before decode & Edit controllability and artifact rate \\
 PEFT adaptation & P2-LORA-1 & LoRA on final CLIP attention blocks & AUROC/F1 gain per trainable parameter \\
 PEFT adaptation & P2-LORA-2 & LoRA rank sweep (r=4,8,16) & Cost-quality tradeoff \\
 Safety policy & P2-SAFE-1 & Confidence band with abstention & Escalation rate and retained accuracy \\
@@ -515,6 +523,7 @@ Risk & Mitigation \\
 \midrule
 Overfitting after peak epoch & Early-stop checkpoints by AUROC and restrict deployment to validated windows. \\
 OCR extraction noise & Add text normalization and evaluate noisy synthetic overlays before rollout. \\
+Counterfactual image artifacts & Add visual-quality filtering and human safety review before accepting generated edits. \\
 Unsafe false negatives & Introduce abstention and mandatory manual review for uncertainty/high-risk bands. \\
 Compute budget limits & Use PEFT (LoRA) instead of full backbone fine-tuning. \\
 Annotation subjectivity & Reviewer guidelines + disagreement resolution + audit logs. \\
@@ -552,6 +561,7 @@ Strong multimodal baseline & Stable re-run with near-identical trend & Training 
 Class-imbalance robustness & Extension outperforms baseline on AUROC/Macro-F1 & Comparative metrics table and script output \\
 Architectural validation & Cross-attention keeps advantage over late fusion & Ablation result table and run logs \\
 Deployment realism & OCR-enabled path evaluated end-to-end & OCR experiment report and error examples \\
+Counterfactual intervention quality & Text and image counterfactual pipelines show controlled hateful-to-benign edits & Counterfactual examples, metrics, and failure cases \\
 Ethical safety integration & Human-in-the-loop escalation policy operational & Escalation statistics + reviewer protocol \\
 Project reproducibility & Commands and configs recreate all major results & README + config snapshots + command list \\
 \bottomrule
@@ -570,8 +580,8 @@ We split work by technical tracks while keeping weekly integration points to avo
 \toprule
 Track owner(s) & Responsibility \\
 \midrule
-Modeling track & LoRA/PEFT experiments, training stability checks, ablation updates. \\
-Data/OCR track & OCR pipeline integration, normalization, and noisy text stress testing. \\
+Modeling track & LoRA/PEFT experiments, training stability checks, ablation updates, and text counterfactual generation. \\
+Data/OCR track & OCR pipeline integration, normalization, noisy text stress testing, and image counterfactual decoding pipeline. \\
 Safety track & Confidence thresholds, escalation logic, reviewer guideline sheet, audit logs. \\
 Evaluation/report track & Metrics consolidation, error analysis write-up, timeline tracking. \\
 \bottomrule
@@ -597,11 +607,11 @@ This workflow is designed to keep the final submission balanced across model qua
 \toprule
 Time Window & Planned Deliverables \\
 \midrule
-Mar 9--Mar 16 & Finalize failure taxonomy; freeze Phase 2 safety policy draft. \\
-Mar 17--Mar 24 & Implement OCR pipeline and confidence-based escalation logic. \\
-Mar 25--Apr 2 & Run LoRA/PEFT experiments; compare with frozen-backbone extension. \\
-Apr 3--Apr 10 & Safety evaluation: escalation rate, reviewer agreement, error-cost analysis. \\
-Apr 11--Apr 18 & Consolidate results, finalize report/figures, prepare viva notes. \\
+Mar 9--Mar 16 & Finalize failure taxonomy; freeze Phase 2 safety policy draft; define counterfactual text/image metrics. \\
+Mar 17--Mar 24 & Implement OCR pipeline, confidence-based escalation logic, and text counterfactual baseline. \\
+Mar 25--Apr 2 & Prototype image counterfactual pipeline (CLIP latent editing + decoder, including SAE-style variant). \\
+Apr 3--Apr 10 & Run LoRA/PEFT experiments and integrated evaluation of counterfactual, OCR, and safety modules. \\
+Apr 11--Apr 18 & Final safety review of generated counterfactuals, consolidate results, finalize report/figures, prepare viva notes. \\
 \bottomrule
 \end{tabularx}
 \label{tab:timeline}
