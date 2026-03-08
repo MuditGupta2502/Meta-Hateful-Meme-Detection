@@ -173,7 +173,7 @@
     \quad|\quad
     \textbf{Phase 1 AUROC:}~~\textcolor{primaryblue}{\textbf{0.7077}}
     \quad|\quad
-    \textbf{Phase 2 AUROC:}~~\textcolor{successgreen}{\textbf{0.7306}}
+    \textbf{Phase 1 Extension AUROC:}~~\textcolor{successgreen}{\textbf{0.7306}}
     \\[3pt]
     \textbf{Best Accuracy:}~~\textcolor{primaryblue}{\textbf{67.0\%}}
     \quad|\quad
@@ -193,7 +193,7 @@
     \href{https://www.kaggle.com/code/muddybuddy/phase1-model}%
          {\textcolor{accentorange}{\texttt{kaggle.com/code/muddybuddy/phase1-model}}}
     \\[4pt]
-    \faCode\quad\textbf{Kaggle -- Phase 2 (SMOTE, 20 epochs):}~~
+    \faCode\quad\textbf{Kaggle -- Phase 1 Extension (SMOTE, 20 epochs):}~~
     \href{https://www.kaggle.com/code/muddybuddy/phase-1-smot-model}%
          {\textcolor{accentorange}{\texttt{kaggle.com/code/muddybuddy/phase-1-smot-model}}}
   \end{tcolorbox}
@@ -221,7 +221,7 @@ This project develops a \textbf{multimodal deep learning framework} for hateful 
   \item Jointly encodes image and text into a shared semantic space using a frozen CLIP (Contrastive Language-Image Pre-training) encoder.
   \item Fuses the two modality representations using a \textit{bidirectional cross-attention mechanism}, allowing each modality to be contextualised by the other.
   \item Classifies the fused representation using a lightweight MLP classifier.
-  \item (Phase 2) Improves robustness under class imbalance using a SMOTE-style balanced sampler (WeightedRandomSampler), longer training, and controlled ablation experiments.
+  \item (Phase 1 Extension) Improves robustness under class imbalance using a SMOTE-style balanced sampler (WeightedRandomSampler), longer training, and controlled ablation experiments.
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -236,10 +236,10 @@ Given a meme $m = (v, t)$ where $v \in \mathbb{R}^{H \times W \times 3}$ is the 
 f(v, t) \;\longrightarrow\; \hat{y} \in \{0, 1\}
 \]
 
-where $\hat{y} = 1$ indicates a \textit{hateful} meme and $\hat{y} = 0$ indicates \textit{non-hateful}. The secondary objective in our completed Phase 2 is to improve class-imbalance robustness while preserving the same core architecture:
+where $\hat{y} = 1$ indicates a \textit{hateful} meme and $\hat{y} = 0$ indicates \textit{non-hateful}. The secondary objective in our completed Phase 1 extension is to improve class-imbalance robustness while preserving the same core architecture:
 
 \[
-\Delta\text{AUROC}_{\text{phase2}} = \text{AUROC}_{\text{phase2}} - \text{AUROC}_{\text{phase1}} > 0
+\Delta\text{AUROC}_{\text{ext}} = \text{AUROC}_{\text{phase1-ext}} - \text{AUROC}_{\text{phase1}} > 0
 \]
 
 and to validate the fusion design through ablation:
@@ -297,9 +297,9 @@ Each sample in the dataset is stored as a JSON line with three fields:
 
 The training set imbalance (1.79:1) requires mitigation to prevent the model from being biased towards predicting the majority (non-hateful) class. We address this via:
 \begin{enumerate}
-  \item \textbf{Class-weighted Focal Loss} with weight vector $\mathbf{w} = [1.0,\ 1.786]$ (used in both Phase 1 and Phase 2).
+  \item \textbf{Class-weighted Focal Loss} with weight vector $\mathbf{w} = [1.0,\ 1.786]$ (used in both Phase 1 baseline and its extension).
   \item The \textbf{focal modulation term} $(1 - p_t)^\gamma$ further down-weights easy majority-class samples.
-  \item \textbf{Phase 2 balanced oversampling} via \texttt{WeightedRandomSampler}, which increases the draw probability of minority hateful samples to create a near 50:50 effective class mix per epoch.
+  \item \textbf{Phase 1 extension balanced oversampling} via \texttt{WeightedRandomSampler}, which increases the draw probability of minority hateful samples to create a near 50:50 effective class mix per epoch.
 \end{enumerate}
 
 \textit{Note:} this is SMOTE-style oversampling for image datasets; no synthetic pixel-space meme images are generated.
@@ -783,11 +783,11 @@ At epoch 1, the model shows asymmetric behaviour: high recall for hateful class 
   \end{itemize}
 \end{tcolorbox}
 
-\subsubsection{Comparison with Baselines}
+\subsubsection{Internal Baselines and Extension Comparison}
 
 \begin{table}[H]
   \centering
-  \caption{Comparison of our model vs. reported baselines}
+  \caption{Internal baseline comparison on the same 500-sample development split}
   \renewcommand{\arraystretch}{1.3}
   \begin{tabular}{lcc}
     \toprule
@@ -795,36 +795,27 @@ At epoch 1, the model shows asymmetric behaviour: high recall for hateful class 
     \textbf{Model} & \textbf{AUROC} & \textbf{Accuracy} \\
     \midrule
     Random baseline                  & 0.500 & 50.0\% \\
-    Text-only (BERT)                 & 0.650 & 59.2\% \\
-    Image-only (ResNet)              & 0.522 & 52.7\% \\
     CLIP zero-shot (cosine sim)                                                    & $\approx0.52$   & $\approx52\%$ \\
-    Concat baseline (ViLBERT-CC)                                                  & 0.700           & 62.1\% \\
-    Deshpande \& Mani~\cite{deshpande2021interpretable} (GBDT\,$+$\,LSTM)         & 0.7272          & --- \\
-    Tchokote \& Tagne~\cite{tchokote2025effective} (RoBERTa\,$+$\,ResNet50\,$+$\,iPCA) & ---         & 81.80\% \\
     \midrule
     \rowcolor{successgreen!15}
     \textbf{Ours -- Phase 1 (CLIP + CrossAttn)}                                   & \textbf{0.7077} & \textbf{67.0\%} \\
     \rowcolor{successgreen!30}
-    \textbf{Ours -- Phase 2 (+Balanced Sampler, ep.~8)}                           & \textbf{0.7306} & \textbf{67.0\%} \\
+    \textbf{Ours -- Phase 1 Extension (+Balanced Sampler, ep.~8)}                 & \textbf{0.7306} & \textbf{67.0\%} \\
     \bottomrule
   \end{tabular}
   \label{tab:baselines}
 \end{table}
 
-Our Phase 1 model outperforms the CLIP zero-shot baseline by $+18.8\%$ AUROC and matches the ViLBERT-CC concat baseline while training only 1.6\% of total parameters. Phase 2 balanced-sampler training (Section~\ref{subsec:phase2}) pushes AUROC to \textbf{0.7306}, surpassing the Deshpande \& Mani~\cite{deshpande2021interpretable} GBDT+LSTM system (AUROC 0.7272). The Tchokote \& Tagne~\cite{tchokote2025effective} system achieves 81.80\% accuracy with heavier machinery (RoBERTa~+~ResNet50~+~SMOTE~+~iPCA); closing this gap is the target of a future Phase 3 with LoRA-based encoder unfreezing.
+Our Phase 1 model outperforms the CLIP zero-shot baseline by $+18.8\%$ AUROC while training only 1.6\% of total parameters. The Phase 1 extension (Section~\ref{subsec:phase1ext}) further improves AUROC to \textbf{0.7306} via class-balanced sampling and longer training, giving a net gain of \textbf{+0.0229} over the original Phase 1 checkpoint.
 
-\begin{tcolorbox}[warning, title={Evaluation Protocol Note}]
-The cross-paper comparison is \textbf{indicative, not strictly like-for-like}: our scores are reported on the 500-sample balanced development split under our training recipe, while published papers may use different splits, preprocessing, and evaluation protocols. We include these numbers as external reference points, not as a claim of identical experimental conditions.
-\end{tcolorbox}
+\subsection{Phase 1 Extension: Class-Balanced Training (SMOTE-Style, 20 Epochs)}
+\label{subsec:phase1ext}
 
-\subsection{Phase 2: Class-Balanced Training (SMOTE-Style, 20 Epochs)}
-\label{subsec:phase2}
-
-Building on the Phase 1 baseline, Phase 2 introduces a \textbf{WeightedRandomSampler} that oversamples the minority hateful class to achieve a balanced 50:50 draw per epoch (SMOTE-style), and extends training to \textbf{20 epochs} with \textbf{200 linear warmup steps}. All other hyperparameters remain identical to Phase 1. Table~\ref{tab:results_phase2} provides the full epoch-wise metrics.
+Building on the Phase 1 baseline, the Phase 1 extension introduces a \textbf{WeightedRandomSampler} that oversamples the minority hateful class to achieve a balanced 50:50 draw per epoch (SMOTE-style), and extends training to \textbf{20 epochs} with \textbf{200 linear warmup steps}. All other hyperparameters remain identical to Phase 1. Table~\ref{tab:results_phase2} provides the full epoch-wise metrics.
 
 \begin{table}[H]
   \centering
-  \caption{Phase 2 epoch-wise metrics (balanced sampler, 20 epochs). Green row = best AUROC checkpoint.}
+  \caption{Phase 1 extension epoch-wise metrics (balanced sampler, 20 epochs). Green row = best AUROC checkpoint.}
   \renewcommand{\arraystretch}{1.15}
   \begin{tabular}{cccccc}
     \toprule
@@ -860,7 +851,7 @@ Building on the Phase 1 baseline, Phase 2 introduces a \textbf{WeightedRandomSam
   \label{tab:results_phase2}
 \end{table}
 
-\begin{tcolorbox}[result, title={Best Phase 2 Checkpoint (Epoch 8)}]
+\begin{tcolorbox}[result, title={Best Phase 1 Extension Checkpoint (Epoch 8)}]
   \begin{itemize}
     \item \textbf{Val AUROC:} $0.7306$ \quad(\textbf{+0.0229} over Phase 1 best of 0.7077)
     \item \textbf{Val Accuracy:} $67.0\%$ \quad(equal to Phase 1 peak)
@@ -869,7 +860,7 @@ Building on the Phase 1 baseline, Phase 2 introduces a \textbf{WeightedRandomSam
   \end{itemize}
 \end{tcolorbox}
 
-\subsubsection{Phase 2 Training Dynamics}
+\subsubsection{Phase 1 Extension Training Dynamics}
 
 \begin{figure}[H]
 \centering
@@ -877,7 +868,7 @@ Building on the Phase 1 baseline, Phase 2 introduces a \textbf{WeightedRandomSam
 \begin{axis}[
   width=0.48\textwidth, height=5.5cm,
   xlabel={Epoch}, ylabel={Loss},
-  title={\textbf{Phase 2 --- Train vs.\ Val Loss}},
+  title={\textbf{Phase 1 Extension --- Train vs.\ Val Loss}},
   legend style={at={(0.98,0.98)}, anchor=north east, font=\small},
   grid=major, grid style={dotted,gray!40},
   xmin=0.5, xmax=20.5,
@@ -906,7 +897,7 @@ Building on the Phase 1 baseline, Phase 2 introduces a \textbf{WeightedRandomSam
 \begin{axis}[
   width=0.48\textwidth, height=5.5cm,
   xlabel={Epoch}, ylabel={AUROC},
-  title={\textbf{Phase 2 --- Validation AUROC}},
+  title={\textbf{Phase 1 Extension --- Validation AUROC}},
   legend style={at={(0.02,0.35)}, anchor=west, font=\small},
   grid=major, grid style={dotted,gray!40},
   xmin=0.5, xmax=20.5,
@@ -924,20 +915,20 @@ Building on the Phase 1 baseline, Phase 2 introduces a \textbf{WeightedRandomSam
 \addplot[dashed, color=accentorange, mark=none, line width=0.8pt] coordinates {
   (0.5,0.7077)(20.5,0.7077)
 };
-\legend{Phase 2 AUROC, Phase 1 best (0.7077)}
+\legend{Phase 1 Extension AUROC, Phase 1 best (0.7077)}
 \end{axis}
 \end{tikzpicture}
-\caption{Phase 2 training dynamics (balanced sampler, 20 epochs). LEFT: Train and validation loss diverge sharply after epoch 8. RIGHT: Validation AUROC vs.\ Phase 1 ceiling (dashed orange). Phase 2 exceeds Phase 1 from epoch~5 onward, peaking at 0.7306 at epoch~8.}
+\caption{Phase 1 extension training dynamics (balanced sampler, 20 epochs). LEFT: Train and validation loss diverge sharply after epoch 8. RIGHT: Validation AUROC vs.\ Phase 1 ceiling (dashed orange). The extension exceeds Phase 1 from epoch~5 onward, peaking at 0.7306 at epoch~8.}
 \label{fig:curves_p2}
 \end{figure}
 
-\subsubsection{Phase 2 Observations}
+\subsubsection{Phase 1 Extension Observations}
 
 \textbf{Epoch 8 is the calibration sweet-spot.} AUROC peaks at 0.7306 with Macro-F1 = 0.670, meaning the model predicts both classes with equal precision and recall (0.67 each). This balanced calibration is a direct outcome of the WeightedRandomSampler exposing the model to equal draws of hateful and non-hateful samples per epoch---contrasting with Phase 1's skewed batch composition which biased predictions toward the hateful class.
 
 \textbf{Severe overfitting commences post-epoch 8.} Training loss reaches 0.025 by epoch 20 while validation loss climbs to $1.18$---a divergence ratio of $\approx\!47{\times}$. The 2.4M trainable parameters memorise the balanced training distribution without generalising. This reveals the \textit{frozen-backbone ceiling}: without adapting the CLIP encoder itself, peak AUROC is bounded at $\approx\!0.73$.
 
-\textbf{Phase 2 surpasses the Deshpande \& Mani~\cite{deshpande2021interpretable} AUROC benchmark} of 0.7272, using a fully end-to-end differentiable architecture rather than their GBDT+LSTM pipeline.
+\textbf{The extension yields a consistent internal gain over the baseline.} Compared with the original Phase 1 checkpoint (AUROC 0.7077), the extension reaches 0.7306 (+0.0229) with identical backbone architecture, showing that class-balanced sampling plus longer training directly improve ranking quality.
 
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Ablation Study}
@@ -1031,7 +1022,7 @@ The key experiments are reproducible via the following commands:
 python train.py --epochs 10 --batch_size 32 --lr 1e-4
 \end{lstlisting}
 
-\begin{lstlisting}[language=bash, caption={Phase 2 balanced-sampler training (20 epochs)}]
+\begin{lstlisting}[language=bash, caption={Phase 1 extension balanced-sampler training (20 epochs)}]
 python train.py --config configs/config_smote.yaml
 \end{lstlisting}
 
@@ -1061,21 +1052,21 @@ The configuration file \texttt{configs/config.yaml} documents all default values
 \subsection{Limitations and Observations}
 
 \begin{enumerate}
-  \item \textbf{Mild overfitting from epoch 4:} Validation loss rises while training loss continues falling. Potential mitigations (for Phase 2): early stopping, stronger dropout, data augmentation.
+  \item \textbf{Mild overfitting from epoch 4:} Validation loss rises while training loss continues falling. Potential mitigations (for planned Phase 2): early stopping, stronger dropout, data augmentation.
   \item \textbf{F1 peak earlier than AUROC peak:} Best binary F1 ($0.6945$) occurs at epoch 5, while best AUROC ($0.7077$) occurs at epoch 9. The best model is saved by AUROC (the official metric), but in a real-world moderation context F1 may be more operationally relevant.
-  \item \textbf{No OCR:} Currently, text is taken directly from the dataset's \texttt{text} field. In real-world deployment, text must be extracted via OCR. This is deferred to Phase 3.
+  \item \textbf{No OCR:} Currently, text is taken directly from the dataset's \texttt{text} field. In real-world deployment, text must be extracted via OCR. This is deferred to planned Phase 2.
   \item \textbf{Fixed CLIP representations:} Frozen encoders cannot adapt to the specific domain of memes, which differ from the Internet images CLIP was trained on (different visual aesthetics, font overlays, etc.).
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Phase 3 Plan}
+\section{Phase 2 Plan}
 % ─────────────────────────────────────────────────────────────────────────────
 
-With Phase 2 completed (balanced sampling + 20-epoch training + ablation), the next stage focuses on lifting the frozen-backbone ceiling and improving deployment realism:
+With Phase 1 baseline and its extension completed (balanced sampling + 20-epoch training + ablation), the next stage (planned Phase 2) focuses on lifting the frozen-backbone ceiling, improving deployment realism, and adding safety controls:
 
 \begin{table}[H]
   \centering
-  \caption{Phase 3 planned deliverables}
+  \caption{Phase 2 planned deliverables}
   \renewcommand{\arraystretch}{1.35}
   \begin{tabularx}{\textwidth}{lX}
     \toprule
@@ -1084,6 +1075,8 @@ With Phase 2 completed (balanced sampling + 20-epoch training + ablation), the n
     \midrule
     LoRA/PEFT Unfreezing &
       Add low-rank adapters on CLIP attention blocks with very small learning rates to adapt representations to meme-specific semantics without full fine-tuning. \\
+    Ethical AI Safety Layer (Human-in-the-Loop) &
+      Add confidence-threshold based manual review for ambiguous/high-risk memes, with escalation rules, reviewer feedback loops, and audit logs so safety decisions can be corrected and traced. \\
     OCR Pipeline &
       Integrate pytesseract/EasyOCR to extract text directly from meme images, enabling fully end-to-end inference without ground-truth text labels. \\
     Counterfactual Generator &
@@ -1105,7 +1098,7 @@ With Phase 2 completed (balanced sampling + 20-epoch training + ablation), the n
 \section{Conclusion}
 % ─────────────────────────────────────────────────────────────────────────────
 
-Phase 1 and Phase 2 of the Multimodal Hateful Meme Detection project have been \textbf{completed successfully}. We have designed, implemented, trained, and evaluated a full multimodal classification pipeline that achieves:
+Phase 1 baseline and its extension of the Multimodal Hateful Meme Detection project have been \textbf{completed successfully}. We have designed, implemented, trained, and evaluated a full multimodal classification pipeline that achieves:
 
 \begin{tcolorbox}[result, title={Phase 1 Baseline Summary}]
 \begin{itemize}
@@ -1119,12 +1112,11 @@ Phase 1 and Phase 2 of the Multimodal Hateful Meme Detection project have been \
 
 The architecture---frozen CLIP encoders + bidirectional cross-attention fusion + MLP classifier---demonstrates that high-quality multimodal representations coupled with a principled fusion mechanism substantially outperform unimodal baselines. Extended experiments confirm the value of the design: balanced sampling raises AUROC by $+0.0229$, and ablation proves cross-attention superiority over concatenation by $+0.0399$ AUROC.
 
-\begin{tcolorbox}[result, title={Extended Results: Phase 2 \& Ablation}]
+\begin{tcolorbox}[result, title={Extended Results: Phase 1 Extension \& Ablation}]
 \begin{itemize}
-  \item \textbf{Phase 2 AUROC: 0.7306} (balanced sampler + 20 epochs; best at epoch~8; \textbf{+0.0229} vs.\ Phase 1)
+  \item \textbf{Phase 1 Extension AUROC: 0.7306} (balanced sampler + 20 epochs; best at epoch~8; \textbf{+0.0229} vs.\ Phase 1)
   \item \textbf{Ablation:} Cross-Attention Fusion $+0.0399$ AUROC over Late-Fusion concatenation baseline
-  \item \textbf{Exceeds} Deshpande \& Mani~\cite{deshpande2021interpretable} GBDT+LSTM benchmark (AUROC 0.7272)
-  \item \textbf{Future Phase 3:} LoRA-based CLIP encoder unfreezing targeting accuracy $>75\%$, closing gap with Tchokote \& Tagne~\cite{tchokote2025effective} ($81.80\%$ accuracy)
+  \item \textbf{Planned Phase 2:} LoRA-based CLIP adaptation, OCR integration, and an ethical-AI safety layer with human intervention for uncertain cases
 \end{itemize}
 \end{tcolorbox}
 
@@ -1155,20 +1147,6 @@ Advances in Neural Information Processing Systems (NeurIPS), 30.
 Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T., ... \& Houlsby, N. (2021).
 \textit{An Image is Worth 16$\times$16 Words: Transformers for Image Recognition at Scale.}
 ICLR 2021.
-
-\bibitem{deshpande2021interpretable}
-Deshpande, T., \& Mani, N. (2021).
-\textit{An Interpretable Approach to Hateful Meme Detection.}
-In \textit{Proceedings of the 2021 International Conference on Multimodal Interaction (ICMI '21)},
-pp. 463--468. ACM, New York, NY, USA.
-\url{https://doi.org/10.1145/3462244.3479949}
-
-\bibitem{tchokote2025effective}
-Tchokote, E.~L.~T., \& Tagne, E.~F. (2025).
-\textit{Effective Multimodal Hate Speech Detection on Facebook Hate Memes Dataset
-Using Incremental PCA, SMOTE, and Adversarial Learning.}
-\textit{Machine Learning with Applications}, 20, 100647. Elsevier.
-\url{https://doi.org/10.1016/j.mlwa.2025.100647}
 
 \end{thebibliography}
 
