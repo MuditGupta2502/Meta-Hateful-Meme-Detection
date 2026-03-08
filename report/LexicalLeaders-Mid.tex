@@ -57,6 +57,14 @@ Transformer attention \cite{vaswani2017attention} motivates our cross-attention 
 
 For the planned second phase, we consider parameter-efficient adaptation via LoRA \cite{hu2022lora} so that representation quality can improve without full encoder fine-tuning. We also include model-risk safeguards inspired by broader responsible-AI moderation practice \cite{weidinger2021ethical}.
 
+\subsection{Recent Multimodal Foundation-Model Context}
+Recent multimodal systems provide useful context for why we keep a parameter-efficient design at mid stage. BLIP-2 \cite{li2023blip2} and Flamingo \cite{alayrac2022flamingo} show that frozen vision encoders with lightweight adapters can be highly competitive. Instruction-tuned vision-language assistants such as LLaVA \cite{liu2023llava} further indicate that alignment quality often depends more on adaptation strategy and data quality than on full end-to-end retraining.
+
+This informs our project choices in two ways. First, we retain frozen CLIP features for compute efficiency and reproducibility in a classroom setting. Second, for planned Phase 2 we prioritize targeted adaptation (LoRA/PEFT + OCR realism + safety policy) over brute-force scaling.
+
+\subsection{Task-Specific Moderation Considerations}
+Unlike generic image-text understanding, hateful meme detection has asymmetric error costs: false negatives may allow harmful content to pass, while false positives may suppress benign speech. Because of this asymmetry, we treat moderation as a \emph{risk-sensitive decision process} rather than pure classification. This is why our plan combines predictive metrics (AUROC/F1) with policy-aware operational metrics (escalation rate, reviewer agreement, and auditability).
+
 \section{Dataset}
 We use the Meta AI Hateful Memes dataset \cite{kiela2020hateful}. The dataset provides image paths, meme text, and binary labels for train/dev splits; the public test split is unlabeled.
 
@@ -207,6 +215,44 @@ We evaluate on the 500-sample balanced dev split.
 \end{itemize}
 
 We report best checkpoints by AUROC and track metric trajectories across epochs for overfitting diagnosis.
+
+\subsection{Extended Evaluation Protocol (Final Phase Plan)}
+Beyond raw point estimates, final-phase evaluation will include protocol-level checks so that reported gains are robust and operationally meaningful.
+
+\textbf{Threshold calibration options.}
+\begin{itemize}[leftmargin=*,nosep]
+  \item Fixed threshold (0.5) for reproducible baseline reporting.
+  \item Dev-optimized threshold maximizing Macro-F1 under class-balance constraints.
+  \item Two-threshold policy for abstention: auto-accept below \(\tau_{low}\), auto-reject above \(\tau_{high}\), and human escalation in between.
+\end{itemize}
+
+\textbf{Uncertainty-aware reporting.}
+To avoid over-interpreting small differences, we will report bootstrap confidence intervals for AUROC and Macro-F1 on the dev set:
+\[
+\text{CI}_{95\%}(m) = [q_{0.025}(m^*),\; q_{0.975}(m^*)],
+\]
+where \(m^*\) denotes metric values across bootstrap resamples.
+
+\textbf{Stress-test slices.}
+We will compute metrics on targeted slices (OCR-noisy text, sarcasm-heavy samples, and identity-term-heavy samples) to identify whether aggregate gains hide subgroup regressions.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Planned final-phase reporting bundle.}
+\begin{tabularx}{\columnwidth}{lX}
+\toprule
+Artifact & Purpose \\
+\midrule
+Overall dev metrics table & Primary model ranking and core comparability \\
+Threshold-policy table & Operational tradeoff (automation vs escalation) \\
+Bootstrap CI table & Statistical stability of reported gains \\
+Slice-wise error table & Detect hidden regressions on difficult subsets \\
+Reviewer decision log summary & Validate human-in-the-loop practicality \\
+\bottomrule
+\end{tabularx}
+\label{tab:reportbundle}
+\end{table}
 
 \begin{table*}[t]
 \centering
@@ -592,6 +638,13 @@ Amanpreet Singh, Pratik Ringshia, and Davide Testuggine. 2020.
 \newblock The Hateful Memes Challenge: Detecting Hate Speech in Multimodal Memes.
 \newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}.
 
+\bibitem[Alayrac et~al., 2022]{alayrac2022flamingo}
+Jean-Baptiste Alayrac, Jeff Donahue, Pauline Luc, Antoine Miech,
+Iain Barr, Yana Hasson, Karel Lenc, Arthur Mensch, Katie Millican,
+Malin Carlsson, et~al. 2022.
+\newblock Flamingo: A Visual Language Model for Few-Shot Learning.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}.
+
 \bibitem[Lin et~al., 2017]{lin2017focal}
 Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Dollar. 2017.
 \newblock Focal Loss for Dense Object Detection.
@@ -603,6 +656,16 @@ Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin,
 Jack Clark, Gretchen Krueger, and Ilya Sutskever. 2021.
 \newblock Learning Transferable Visual Models From Natural Language Supervision.
 \newblock In \textit{International Conference on Machine Learning (ICML)}.
+
+\bibitem[Li et~al., 2023]{li2023blip2}
+Junnan Li, Dongxu Li, Silvio Savarese, and Steven Hoi. 2023.
+\newblock BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models.
+\newblock In \textit{International Conference on Machine Learning (ICML)}.
+
+\bibitem[Liu et~al., 2023]{liu2023llava}
+Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee. 2023.
+\newblock Visual Instruction Tuning.
+\newblock In \textit{Advances in Neural Information Processing Systems (NeurIPS)}.
 
 \bibitem[Vaswani et~al., 2017]{vaswani2017attention}
 Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit,
