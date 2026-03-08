@@ -1,0 +1,41 @@
+# ─────────────────────────────────────────────────────────────────
+# Multimodal Hateful Meme Detection — Enhanced Config
+# Phase 2: SMOTE-style balanced sampling + 20 epochs
+#
+# IMPORTANT: The original 10-epoch run (67% acc, AUROC 0.7077) used
+#            configs/config.yaml — keep that file UNCHANGED as the
+#            Phase 1 baseline.  This file is for the enhanced run.
+# ─────────────────────────────────────────────────────────────────
+
+model:
+  clip_model: "openai/clip-vit-base-patch32"
+  freeze_encoders: true          # Keep CLIP frozen; only train fusion + head
+  embed_dim: 512
+  fusion_hidden_dim: 256
+  num_attention_heads: 4
+  dropout: 0.3
+
+training:
+  batch_size: 32
+  num_epochs: 20                 # doubled from Phase 1 (was 10)
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 200              # longer warmup for more epochs
+  max_grad_norm: 1.0
+  # Focal loss with class weights (still used alongside balanced sampler)
+  class_weights: [1.0, 1.786]
+  focal_gamma: 2.0
+  # Balanced oversampling (WeightedRandomSampler — SMOTE equivalent)
+  use_balanced_sampler: true
+
+data:
+  train_path: "data/train.jsonl"
+  dev_path: "data/dev.jsonl"
+  test_path: "data/test.jsonl"
+  image_root: "data/img"
+  max_text_length: 77
+
+paths:
+  output_dir: "outputs"
+  model_dir: "outputs/models_smote"   # separate dir so Phase 1 weights stay intact
+  log_dir: "outputs/logs"

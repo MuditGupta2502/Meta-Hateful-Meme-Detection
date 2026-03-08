@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.spec
+
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Model checkpoints (large binary files)
+outputs/models/
+outputs/models_smote/
+outputs/ablation/
+all_results/
+
+# Dataset images (10,000 files, distribute via Kaggle)
+data/img/
+
+# OS
+desktop.ini
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# LaTeX auxiliary files
+report/*.aux
+report/*.log
+report/*.toc
+report/*.out
+report/*.lof
+report/*.lot
+report/*.synctex.gz
+report/*.fls
+report/*.fdb_latexmk
+
+# Misc
+*.pt
+*.pth
+*.bin
+*.pkl
+*.ckpt

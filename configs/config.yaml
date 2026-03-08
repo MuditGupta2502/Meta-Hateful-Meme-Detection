@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────
+# Multimodal Hateful Meme Detection — Configuration
+# ─────────────────────────────────────────────────────────────────
+
+model:
+  clip_model: "openai/clip-vit-base-patch32"
+  freeze_encoders: true          # Keep CLIP frozen; only train fusion + head
+  embed_dim: 512                 # CLIP projection dimension (fixed)
+  fusion_hidden_dim: 256         # MLP hidden dim inside classifier head
+  num_attention_heads: 4         # Heads in cross-attention fusion
+  dropout: 0.3
+
+training:
+  batch_size: 32
+  num_epochs: 10
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  warmup_steps: 100
+  max_grad_norm: 1.0
+  # Class weights to handle imbalance (non-hateful: 5450, hateful: 3050)
+  # weight = N_majority / N_minority ≈ 1.786
+  class_weights: [1.0, 1.786]
+  focal_gamma: 2.0               # Focal loss gamma (0 = standard CE)
+
+data:
+  train_path: "data/train.jsonl"
+  dev_path: "data/dev.jsonl"
+  test_path: "data/test.jsonl"
+  image_root: "data/img"
+  max_text_length: 77            # CLIP max token length
+
+paths:
+  output_dir: "outputs"
+  model_dir: "outputs/models"
+  log_dir: "outputs/logs"
