@@ -28,6 +28,7 @@ all_results/
 
 # Dataset images (10,000 files, distribute via Kaggle)
 data/img/
+data.zip
 
 # OS
 desktop.ini
