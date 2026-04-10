@@ -1,0 +1,1222 @@
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+Available online 18 August 2023
+0952-1976/© 2023 Elsevier Ltd. All rights reserved.
+Multimodal hate speech detection via multi-scale visual kernels and 
+knowledge distillation architecture 
+Anusha Chhabra , Dinesh Kumar Vishwakarma
+* 
+Biometric Research Laboratory, Department of Information Technology, Delhi Technological University, Delhi, 110042, India   
+ARTICLE INFO  
+Keywords: 
+Hate content 
+Deep learning 
+Machine learning 
+Multimodal 
+Adaptive receptive field 
+ABSTRACT  
+People increasingly use social media platforms to express themselves by posting visuals and texts. As a result, 
+hate content is on the rise, necessitating practical visual caption analysis. Thus, the relationship between image 
+and caption modalities is crucial in visual caption analysis. Contrarily, most methods combine features from the 
+image and caption modalities using deep learning architectures with millions of parameters already trained 
+without integrating a specialized attention module, resulting in less desirable outcomes. This paper suggests a 
+novel multi-modal architecture for identifying hateful memetic information in response to the above observation. 
+The proposed architecture contains a novel "multi-scale kernel attentive visual" (MSKAV) module that uses an 
+efficient multi-branch structure to extract discriminative visual features. Additionally, MSKAV utilizes an 
+adaptive receptive field using multi-scale kernels. MSKAV also incorporates a multi-directional visual attention 
+module to highlight spatial regions of importance. The proposed model also contains a novel "knowledge 
+distillation-based attentional caption" (KDAC) module. It uses a transformer-based self-attentive block to extract 
+discriminative features from meme captions. Thorough experimentation on multi-modal hate speech benchmarks 
+MultiOff, Hateful Memes, and MMHS150K datasets achieved accuracy scores of 0.6250, 0.8750, and 0.8078, 
+respectively. It also reaches impressive AUC scores of 0.6557, 0.8363, and 0.7665 on the three datasets, 
+respectively, beating SOTA multi-modal hate speech identification models.   
+1. Introduction 
+A meme is " a behavior passed on from one person to another through 
+mimicry or other non-genetic behaviors." Memes can be found in a va -
+riety of forms, such as photographs, videos, and Twitter postings, among 
+others, and they have a growing influence on social media communi -
+cation (( French, 2017 ), ( Suryawanshi et al., 2020a )). Memes, text-based 
+visuals, are the most common type of material that is typically funny and 
+often intended to be humorous and harmless. But, various categories of 
+images, texts, or a combination of the two could turn into a hateful 
+meme. Since the pictures have several modalities (caption and pictorial 
+nature), it is usually challenging to make sense of the content from just 
+one modality ( He et al., 2016 ). Therefore, it ’ s crucial to consider both 
+modalities to comprehend the meme ’ s meaning or intended meaning. 
+Unfortunately, memes are to blame for spreading hatred throughout 
+society; consequently, it is essential to identify memes that contain 
+hateful content automatically. However, because memes commonly 
+incorporate text and images, controlling them through automated 
+evaluation is challenging. On the other hand, the facts such as the power 
+supply process ( Yu et al., 2023a ), which remain the cellphones charge 
+for a very long time, the reasonable costs of smartphones, and the 
+availability of the tools providing the option to look into the insights, 
+give the ease of access to the users, creating a tremendous amount of 
+data on the web. As a result, social media contains both explicit and 
+implicit forms of insulting or abusive content (( Waseem et al., 2017 ), 
+( Watanabe et al., 2018 ), ( Rani et al., 2020 )). It may be categorized as 
+explicitly offensive or hateful if it is identified as such. Imprecise lan -
+guage, sarcasm, an absence in expression, negative terminology, or 
+various forms of communication frequently conceals the true meaning of 
+implicit hate content. By being harsh or insulting, hate content seeks to 
+upset or humiliate its target audience ( Chhabra and Vishwakarma, 
+2023 ). Previous research on online content recognition concentrated on 
+trolling ( De La Vega and Ng, 2019 ), aggressiveness detection ( Aroyehun 
+and Gelbukh, 2018 ), hate speech detection (( Schmidt and Wiegand, 
+2017 ), ( Ranjan et al., 2016 )), diacritics ( Le-hong, 2021 ), cyberbullying 
+( Arroyo-Fern ´andez et al., 2018 ), and cyber terrorists ( Saidi et al., 2022 ), 
+emotion and sentiment analysis ( Aka Uymaz and Kumova Metin, 2022 ), 
+automatic fake news detection (( Ali et al., 2023 ), ( Ali et al., 2022a )) 
+* Corresponding author. 
+E-mail addresses: anusha.chhabra@gmail.com (A. Chhabra), dinesh@dtu.ac.in , dvishwakarma@gmail.com (D.K. Vishwakarma).  
+Contents lists available at ScienceDirect 
+Engineering Applications of Artificial Intelligence 
+journal homepag e: www.else vier.com/loc ate/engap pai 
+https://doi.org/10.1016/j.engappai.2023.106991 
+Received 8 May 2023; Received in revised form 18 July 2023; Accepted 12 August 2023   
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+2
+( Gandhi et al., 2020 ). conducted studies to identify objectionable con -
+tent in photos, including nudity, sexually explicit material, objects that 
+encourage violence, and racially insensitive material. Due to the wide 
+range of language and concepts used in literature for hate content, the 
+SemEval 2020 work divided the text into three categories: determined, 
+undetermined, and, if determined, directed to a set of people or an in -
+dividual ( Zampieri et al., 2020 ). In light of this, when an idea or feeling 
+is spread over a medium to deteriorate the social identity of a target 
+person, group, or community, it is what we call a hateful meme. Since a 
+meme pairs a neutral sentence with a provocative visual or vice versa, it 
+might be considered implicitly harmful. Therefore, building a system for 
+offensive content detection on social media platforms is essential. 
+The first example from Fig. 1 depicts the caption as non-hate while 
+the image and caption depict a hate message combined. The second 
+illustration demonstrates how the meme disparages a minority by 
+attacking religion. This is clear from the indications seen in the photo -
+graph, specifically the clothing worn by the figures. The third example is 
+insulting Hillary (the Democratic candidate for president in the 2016 U. 
+S. election) supporters by humiliating them, and the last example amply 
+demonstrates hatred towards a particular faith by expelling individuals 
+forcibly from the United States of America. 
+1.1. Motivation 
+Recently, more users are actively participating on social media in the 
+form of WhatsApp posts, Facebook updates, YouTube videos, reviews, 
+and comments, among other forms, on various themes. People are 
+sharing their opinions, which has resulted in a vast volume of data on -
+line. The information needs to be examined for future study. The data 
+from the last five years has been considered for visualization and 
+motivation behind conducting this research. Fig. 2 illustrates the count 
+of hate content publications from Web of Science (WoS) and Scopus 
+databases. From Fig. 2 , it is observed that there is a tremendous amount 
+of hate content generation on social media, giving the motivation to 
+conduct research in this field. 
+Moreover, the publications on multimodal hate speech detection are 
+very few. If we take the data from WoS and Scopus databases, the 
+number of publications via keyword search as "multimodal hate speech" 
+is 1% and 6.6%, respectively. Nowadays, people communicate via 
+memes more often than texts, emphasizing authors ’ focus on multi -
+modal data. 
+1.2. Challenges 
+Different categories of images, texts, or combining two could create 
+various memes. It can be a benign text confounder, benign image 
+confounder, contrapositive, or counterfactual meme (refer to Fig. 3 ). 
+Fig. 3 (a) stands for misleading memes. The left image depicts a hateful 
+meme, whereas the other two illustrate its confounders, changing its 
+label and resulting in a not-hateful meme. The confounding meme can 
+be generated by changing the original meme ’ s image or label. Fig. 3 (b) 
+depicts contrapositive, and Fig. 3 (c) represents counterfactual meme. 
+The challenge lies in the diversities of these types of memes which can 
+contain objects that the existing classifiers cannot identify the result. 
+The solution is essential via incorporating additional information from 
+different sources to improve classification accuracy. An optical char -
+acter recognition (OCR) technique can be applied to extract the lin -
+guistic part of the meme, and object detection methods can be utilized to 
+encode the correlated image part of the meme. Aspects of several mo -
+dalities have been combined at three levels in prior research to solve this 
+issue: early fusion, late fusion, and hybrid fusion. Late fusion takes place 
+at the decision or score level; early fusion happens. 
+at the feature level, and hybrid fusion mixes the two. One of the most 
+important research issues is combining text and visual modalities ( Poria 
+et al., 2018 ). asserts that examining a post ’ s multimodal content yields 
+better outcomes than processing it separately. In feature-level fusion, 
+the features gathered independently for each modality are fused and 
+input into the classification model ( Poria et al., 2017 ). A late fusion 
+technique, on the other hand, is when the characteristics obtained for 
+each data mode are provided to several classification models, after 
+which the overall scores of numerous models are combined [ ( Poria 
+et al., 2016 ), ( Niu et al., 2016 )]. Early fusion may not accurately capture 
+the tightly coupled correlation among the pertinent modalities, and 
+decision-level fusion may not accurately portray the interplay between 
+several modalities. To address this problem, attention-based interme -
+diate fusion models were created [ ( Huang et al., 2019 ), ( Ma et al., 
+2021 )]. The proposed approach has significant difficulty sustaining the 
+validity of meaning while bridging the relationship between modalities. 
+Although early and late fusion is one of the primary methods for con -
+necting various modalities meaningfully, it does not appear straight -
+forward. A study ( Poria et al., 2015 ) found that late fusion outperforms 
+early fusion in integrating text, audio, and facial expression features. We 
+created a feature-level fusion in this research to merge the simultaneous 
+Fig. 1. Examples of hateful memes.  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+3
+functionalities of the image and text modalities. These are the three 
+main components of the model that we provided. There are three of 
+these: (a) an attentional tokenizer branch for retrieving relevant 
+text-related characteristics from the labels; (b) a multi-scale visual 
+attentional branch for retrieving relevant visual characteristics; and (c) a 
+cross-domain feature fusion structure for combining multi-modal data 
+and carrying out classification. The task we performed is a binary clas -
+sification of a meme as hate or no hate. Various state-of-the-art visual 
+languages (dual stream models) can be trained with correlated visual 
+and textual content datasets. All the existing visual language models use 
+pre-trained faster RCNN for extracting visual features and BERT for 
+language modeling. Any visual hints in the image are difficult to 
+recognize. Hence, the placement of text in the meme is also crucial. 
+1.3. Significance 
+The significance of detecting hate content from memes is rapidly 
+increasing with the proliferation of the Internet and digital media plat -
+forms. Hate content in various forms is also a serious concern nowadays. 
+As such, professionals in technology, business strategy, government 
+agencies, and political analysis have emphasized the importance of 
+leveraging this domain in various facets of the decision-making process 
+to enhance reputations by developing advanced deep learning archi -
+tectures for hate content identification. This study may be significant to 
+individuals who frequently utilize established cutting-edge deep 
+learning architectures for recognizing hate content. This will encourage 
+future researchers to focus on the widespread multimodal hate content, 
+as very few studies have been found on multimodal hate content. 
+Although, textual hate content approaches have proven effective 
+because multi-branch techniques ( Yadav and Kumar Vishwakarma, 
+2023 ) aim to extract complementary features from different domains. 
+Most multi-branch methods are based on implicit assumptions that 
+multi-domain characteristics will be combined evenly. One part might 
+be more significant than another; therefore, this might not always be the 
+case. This is the primary or fundamental notion that guided the design of 
+the suggested architecture. The proposed architecture ’ s strength is its 
+ability to adaptively change the ratio of fusion of visual and textual 
+features, thereby improving model performance. The attentional process 
+has also drawn attention to specific components in both branches. Re -
+sults from experiments validate the suggested model. 
+The followings are the work ’ s primary contributions:  
+• We presented a novel twofold branch architecture named multi-scale 
+kernels for visuals and a knowledge distillation-based model for 
+texts. A novel multi-branch attentional module is introduced to 
+collect pertinent data using visual modality, and a branch of the 
+attentional tokenizer for the caption modality is created to extract 
+prominent features.  
+• The novel "multi-scale kernel attentive visual" (MSKAV) module uses 
+an efficient multi-branch structure to extract discriminative visual 
+features from memes. MSKAV contains multi-scale kernels to have 
+receptive fields of multiple resolutions. Additionally, MSKAV in -
+corporates multi-directional visual attention to highlight spatial re -
+gions of importance.  
+• The proposed "knowledge distillation-based attentional caption" 
+(KDAC) module has self-attention-based transformer architecture for 
+efficient sequence learning from meme text.  
+• We conduct in-depth analysis and experiments using three multi- 
+modal hate speech benchmarks MultiOff ( Suryawanshi et al., 
+2020b ), Hateful Memes ( Kiela et al., 2021 ), and MMHS150K ( Gomez 
+et al., 2020 ) datasets, beating the existing state-of-the-art. The 
+ablation study on (( Suryawanshi et al., 2020b ), ( Kiela et al., 2021 ), 
+Fig. 2. Depicts the number of publications in hate content identification over the last five years taken from (a) Web of Science and (b) Scopus database.  
+Fig. 3. (a) Samples of Text and Image confounders. Left Image of (a) shows a hateful meme. In contrast, the middle and right images of (a) illustrate its confounders 
+via changing text or image to a non-hateful meme, (b) represents a contrapositive meme, and (c) depicts a counterfactual meme. 
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+4
+(Gomez et al., 2020)) is carried out by considering the evaluation on 
+KDAC (text branch only), MSKAV w/o attention, and MSKAV with 
+attention, which proves that the proposed multimodal architecture is 
+giving the best results. 
+The subsequent sections of this paper are structured as follows. 
+Section 2 describes the related research in this field, considering textual, 
+visual, and multimodal aspects. Section 3 will detail the proposed work 
+and the methodologies used for prediction, followed by the experi -
+mental setup, including hardware requirements and hyper-parameter 
+specifications in section 4. The result analysis to highlight the spatial 
+region of importance, ablation trials, and generalization study are 
+covered in section 5. Section 6 covers the discussion part. At last, the 
+study concludes with more suggestions for future research covered in 
+section 7. 
+2. Related work 
+This section reviews the literature review of work done in detecting 
+hate speech considering textual, visual, and multimodal aspects. 
+2.1. Textual aspect 
+The natural language processing (NLP) branch is working to close the 
+comprehension and understanding gap between human languages and 
+computers. Specifically, the efficiency and effectiveness of deep learning 
+architectures have made extensive advancement in the areas like 
+sentiment analysis (Pandey and Vishwakarma, 2023), atomistic simu -
+lation (Martín and Camacho, 2022), self-monitoring systems, object 
+detection, life prediction analysis, online education like music teaching 
+(Yu et al., 2023b), classification, filtering, language translation, etc., 
+covering diverse languages. With the ease of social media and the vast 
+use English language, hate speech is also flowing on the web in various 
+regional languages like Urdu, Portuguese, Bengali, Hindi, etc. 
+Hindi-English code-switched language models for efficient text repre -
+sentation are encountered by (Sharma et al., 2022). The study (Ali et al., 
+2023) concentrates on brief sentences since learning-sufficient qualities 
+in news information are lacking. More research is needed to find the 
+augmented features using a web search for longer material. The lengthy 
+text may be divided into shorter sentences to acquire probabilistic 
+pre-decision. By combining the outcomes of the pre-decision, the final 
+decision regarding the class can be deduced (Ali et al., 2022a). illustrates 
+that traditional features collected from news articles outperform previ -
+ous models built using text embedding approaches. Most online publi -
+cations in this field are available in a single modality, i.e., Text only, and 
+most of the work has been done in English only (Chhabra and Vishwa -
+karma, 2023). Traditional machine learning algorithms rely on feature 
+engineering, making the process complex and time-consuming (Chhabra 
+and Kumar, 2023). The performance analysis is measured in (Chhabra 
+and Vishwakarma, 2022) using various traditional learning, deep 
+learning, and fuzzy logic classifiers for hate speech detection, showing 
+the outstanding performance of fuzzy classifiers. In hate content iden -
+tification, the Support Vector Machine (SVM) classifier includes manu -
+ally extracted text features to determine whether the provided content is 
+abusive (Warner and Hirschberg, 2012). N-gram characteristics were 
+employed by (Djuric et al., 2015) to categorize whether or not the 
+speech was abusive (Djuric et al., 2015). have classified whether the 
+speech is abusive using n-gram features. There are many text-based 
+datasets available for hostility recognizable proof (Watanabe et al., 
+2018), the recognition of hate speech (Davidson et al., 2017), and the 
+identification of offensive language (Zampieri et al., 2020). The rele -
+vancy of cross-dataset and cross-lingual generalization in this area is 
+remarked by (Fortuna et al., 2021) and (Shi et al., 2022). Authors in 
+(Watanabe et al., 2018) work on unigrams and examples of the text for 
+recognizing hate content. After being meticulously crafted by hand, 
+these patterns are given to machine learning models for further 
+classification (Zampieri et al., 2020). address some of the difficulties in 
+identifying offensive content and the classification of hateful tweets in 
+German. This research emphasizes features specific to a single modality, 
+such as text and manual feature extraction. Nowadays, the advancement 
+in NLP has introduced pre-trained linguistic models like BERT (Devlin 
+et al., 2019), and its variants like RoBERTa (Liu et al., 2019), DistilBERT 
+(Sanh et al., 2019), and XLNet (Yang et al., 2019) are widely used in hate 
+content classification. BERT uses large amounts of unlabeled data to 
+build models with adjustable parameters as needed for smaller amounts 
+of supervised data to enhance performance (Ali et al., 2022b). The 
+variants of BERT are assessed for hate content classification incorpo -
+rating characters with subword embedding (Wullach et al., 2022). Au -
+thors in (Rajput et al., 2021) designed a framework for detecting hate 
+content by combining DNNs with static BERT embedding to extract 
+contextual information better. 
+2.2. Visual aspect 
+Due to the tremendous data increase in various modalities, deep 
+learning models are used. We work with memes spanning text and im -
+ages, and deep learning algorithms automatically extract features from 
+these memes. The research till now majorly relies on object detection 
+where only images are considered (Suryawanshi et al., 2020b). CNN is 
+frequently employed in machine vision tasks as it provides the benefit of 
+processing pixels in images (Zhang et al., 2023a). It has also been 
+acknowledged that error gradients in deep networks or recurrent neural 
+networks can build and result in very large gradients during the training 
+phase. Furthermore, the benefits of successfully avoiding gradient ex -
+plosion are investigated using a bidirectional long- and short-term 
+memory (Bi-LSTM) neural network fed with the CNN characteristics 
+(Zhang et al., 2023b). In image-based hate content detection, Convo -
+lution Neural Networks (CNNs) models are the most prominent in 
+identifying offensive content in the form of nudity ((Arentz and Olstad, 
+2004), (Kakumanu et al., 2007), (Tian et al., 2018)), appropriate or 
+in-appropriate images for children (Gandhi et al., 2020), 
+offensive/non-compliant logos (Gandhi et al., 2020), pornographic web 
+pages (Hu et al., 2007). 
+2.3. Multimodal aspect 
+The related work till now focuses on unimodal aspects, i.e., either 
+text or image individually. Now a day, Information in the form of 
+internet memes is the most common on social media platforms, and they 
+form the text-accompanied images. A shared task on the analysis of 
+memotion was already available in SemEval2020 (Zampieri et al., 
+2020). Very few datasets are available in this aspect (Chhabra and 
+Vishwakarma, 2023). The reliability and robustness of the algorithms 
+should be taken into account prior to working on multimodal data (Bajaj 
+and Vishwakarma, 2023). (Kiela et al., 2021) designed a popular Face -
+book hateful memes challenge dataset in May 2020 and obtained a 
+human accuracy score of 84.70% after the annotation process (Kiela 
+et al., 2021). also applied a VilBERT (Lu et al., 2019) on conceptual 
+caption (Sharma et al., 2018), providing a winning solution by claiming 
+test accuracy of 69.47% and an AUC score of 75.44%. Authors in (Lee 
+et al., 2021) implemented R–CNN for the visual branch and BERT for a 
+textual branch on Facebook hateful memes dataset, giving an accuracy 
+score of 75.80% and AUC of 82.80%. An impressive accuracy score of 
+71.08% on (Kiela et al., 2021) is also claimed by (Bhat et al., 2022) using 
+BERT and Xception models. A dataset of about 150K images by the name 
+"MMHS150K" (Gomez et al., 2020) is the largest dataset available pub -
+licly on hate speech. They tried to build a model which can differentiate 
+between publications that use offensive language, and that target 
+particular communities. They, therefore, experimented with utilizing 
+hate scores instead of binary labels for each tweet, but the data showed 
+no significant differences between the various labels of hatred in the 
+experimental part. Authors in (Gomez et al., 2020) used the Feature 
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+5
+concatenation model, textual kernel model, and spatial concatenation 
+model to boost the performance with an accuracy of 68.50%. A dataset 
+with only 743 offensive memes is also publicly available and imple -
+mented stacked LSTM and VGG16 for evaluating precision, recall, and 
+F-score ( Suryawanshi et al., 2020b ). ( Lee et al., 2021 ) applied R – CNN 
+and BERT on the MultiOff dataset, calculating precision, recall, and 
+F1-score as 64.50%, 65.10%, and 64.60% respectively. Currently, 
+sarcasm is also a developing research area in relation to sentiment 
+analysis, emoji detection, and hate/offensive content. Authors in 
+( Chauhan et al., 2022 ) also focus primarily on sarcasm detection using a 
+multimodal attention mechanism followed by emoji and sentiment 
+analysis ( Pandey and Vishwakarma, 2023 ). 
+All of the various approaches covered above have taken into account 
+various machine learning and deep learning techniques for the predic -
+tion of hate content. The preceding study demonstrates that there are 
+very few publicly available datasets and papers that have been reported 
+on hate memes. Consequently, this is a new field with a significant un -
+solved problem. To as best as of our knowledge, no prior study has 
+utilized the multi-scale kernel and multi-directional attention to obtain 
+the feature-level information, which adds novelty to our proposed 
+approach as mentioned in section 3 . 
+3. Proposed methodology 
+Most of the work is done on textual datasets ( Chhabra and Vishwa -
+karma, 2023 ) using majorly baseline machine learning methods to 
+evaluate the results. However, it is also observed that there is an incli -
+nation towards deep learning models for text classification after the 
+SemEval-2019 Task5 competition ( Baruah et al., 2019 ). In addition, 
+transformers-based attention mechanisms have also shown advance -
+ments in learning the contexts in a more reliable manner ( Devlin et al., 
+2019 ). The proposed architecture of the paper is composed of two 
+modules "Multi-Scale Kernel Attentive. 
+Visual Branch" and "Knowledge Distillation based Attentional 
+Caption Branch" each for images and captions respectively as shown in 
+Fig. 4 . After feeding the respective inputs to their respective modules, 
+the (16,16) features obtained from both branches are fused together (32 
+features) before passing through the fully connected layer resulting in 
+the binary classification as hate or non-hate. 
+The following subsections describe the respective modules: 
+3.1. Multi-scale kernel attentive visual (MSKAV) module 
+This module describes the vision branch that consists of a dynamic 
+selection of multi-scale convolution kernels along with multi-branch 
+architecture and visual Attention. The architecture is a simple, highly 
+modularized network framework for image classification. It is made by 
+repeating a building block with the same topology and stronger repre -
+sentations. This concept exposes a new dimension, "cardinality" as an 
+essential factor along with depth and width. The visual branch archi -
+tecture with cardinality 32 (total 32 paths) and 4d bottleneck width, 
+which is further enhanced using selective kernel convolution followed 
+by multi-directional visual attention as shown in Fig. 5 . For each path, 
+Conv 1 × 1 – Selective Kernel- Conv 1 × 1 are done at each convolution 
+path. Each path ’ s internal dimension is designated as d (d = 4). 
+The cardinality C (C = 32) represents the number of paths. It is also 
+the dimension of 128, which is further raised to 256 if we add the 
+dimension of each "selective kernel" block. Then all the paths are added 
+together by the concatenation operator. The fundamental principle of 
+choosing a "Selective Kernel" convolution is that it is helpful in optimi -
+zation by enabling each neuron to adaptively change the size of its 
+receptive fields (RF) based on various scales of input data. A detailed 
+explanation of "Selective Kernel" is given in section 3.1.2, and a multi- 
+directional visual attention module is described in section 3.1.3 . The 
+visual branch architecture which follows multi-branch architecture is 
+used to learn characteristics from raw data via targeting a specific goal 
+making it effective on detecting hateful memes. The idea of using the 
+multi branch architecture is the presence of hundreds of layers making 
+the training much easier. 
+3.1.1. Computationally efficient multi-branch feature learning 
+In recent years, CNNs have become much deeper and deeper as 
+multiple layers are better at generalizing. Inception architecture is a 
+deep network architecture with the property of divide-transform-merge 
+strategy proved to give good accuracy against previous deep networks 
+with the limitation of high computational power. In comparison with the 
+deeper or wider networks, it has been found that increasing the size of 
+the set of transformations with the same architecture is more effective in 
+Fig. 4. Proposed Architecture: Multi- Scale Kernel Attentive Visual Module cum Knowledge Distillation Attentional Caption Architecture.  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+6
+terms of classification and complexity. This paper also presents the 
+aggregated transformation as follows: 
+∑
+D
+n = 1
+w
+n
+x
+n
+→
+∑
+S
+n = 1
+Ƭ
+n
+( x ) (1)  
+where, x is the D - channel input vector ( α × β × ϒ ) , 
+’ S ’ is the size of the set of transformations Ƭ . 
+LHS of Eq. (1) shows the splitting of vector x as low-dimensional 
+representation, then transformation is done with the scaling vector, w 
+which is finally aggregated as 
+∑
+D
+n = 1
+w
+n
+x
+n 
+whereas RHS of the equation is 
+the aggregated transformation with an arbitrary function as Ƭ
+n
+( x ) . . 
+To further enhance the classification capability of the backbone ar -
+chitecture from ( Xie et al., 2017 ), a “ selective kernel ” ( Li et al., 2019 ) 
+Fig. 5. Visual Branch Architecture via aggregated residual transformation and attentional module.  
+Fig. 6. Selective kernel convolution for adaptive receptive field (divide, merge, and select).  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+7
+has been used to exploit the dynamic selection of multi-size convolution 
+kernels. 
+3.1.2. Selective Kernel Convolution for Adaptive Receptive Field 
+A computationally lightweight selective kernel network ( Fig. 6 ) was 
+introduced with an adaptively adjustable property of receptive field size, 
+making it more effective and efficient for producing the features in 
+image classification. Additionally, it includes the triplet operations: 
+divide, merge, and select.  
+• Divide: The divide procedure produces numerous pathways with 
+varied kernel sizes that match different RF sizes of neurons. In this 
+phase, two transformations Ƒ ’ : Х →
+˜
+U ε ℜ
+D ’ and 
+Ƒ ": Х → Û ε ℜ
+D ’ 
+with 
+variation in the kernel sizes as 3 × 3 and 5 × 5 respectively, are 
+conducted on the feature map Ƒ ε ℜ
+D 
+with dimensions D as α × β ×
+ϒ . Both transformations are composed of depth-wise convolutions, 
+Batch Normalization (BN), and ReLU function in series. The combi -
+nation of all transformations splits the input feature map X into M (M 
+= 2).  
+• Merge: The Merge operation embeds the global information from the 
+two branches (M) via an element-wise summation by the Global 
+Average Pool (GAP), generating the vector ’ s ’ as channel-wise sta -
+tistics of 1 × 1 dimension, then adds a fully linked layer to mix and 
+aggregate the information from two paths Ƒ = Ƒ ’ + Ƒ ’’ to create an 
+extensive and global representation of selection weights. 
+Further, in this operation, a compact feature descriptor ’ z ’ ( Eq. (2) ) 
+is designed to facilitate precise selection guidance through the use of a 
+single and fully connected layer. 
+z = ReLU ( BN ( Ws )) (2)  
+where, W ∈ R
+d × 1
+; d is the combination of α and β , . 
+BN is Batch Normalization, 
+‘s ’ is the channel wise statistics of 1 × 1 dimension. 
+Select: The select procedure aggregates the feature maps from 
+various kernel sizes, i.e., 3 × 3 and 5 × 5 , in accordance with the se -
+lection weights A and B to generate the feature maps V1 and V2, 
+respectively. Then select V = A ⊗ Ƒ ’ + B ⊗ Ƒ
+″
+. 
+The output feature map V is fed into the multi-directional visual 
+attention module for capturing the cross-dimension between spatial and 
+channel dimensions of the input. The description of the visual attention 
+module is given in section 3.1.3 . 
+3.1.3. Multi-directional visual attention 
+The attention mechanism in deep neural networks includes either 
+channel or spatial or both attentions. Contrary to spatial attention, 
+which weighs each pixel in a single feature map, channel attention 
+essentially weighs each feature map or channel in the tensor. The pro -
+posed attention mechanism is a three-branch multi-directional visual 
+attention ( Fig. 7 ) involves both attention (channel + spatial). When 
+computing attention on a single pixel channel, there is no dependency 
+between channel dimension and spatial dimension, which could result in 
+a significant loss of spatial information, this module is used to collect 
+cross-dimension dependencies via multi-branch to solve the information 
+loss problem. The cross-dimensional dependencies are introduced by 
+independently capturing the dependencies between the input tensor ’ s 
+(C, H), (C, W), and (H, W) dimensions. The detailed description is as 
+follows: 
+Each of the three branches of the three-branch multi-directional vi -
+sual architecture ( Fig. 7 ) is in charge of calculating and applying the 
+attention weights across two of the three dimensions of the input tensor. 
+The bottom branch computes fundamental spatial attention, whereas 
+the top two branches calculate channel attention weights against each of 
+the two spatial dimensions. The input tensor is rotated in the top two 
+branches to change its dimensions, and then the Zeroth Pool (Z-Pool) 
+operator is used to reduce the zeroth dimension to two by concatenating 
+its average-pooled and maximum-pooled features across that dimension. 
+After going through a single spatial convolution layer and sigmoid 
+activation, the output of this tensor is then relayed, further reducing the 
+zeroth dimension to one. After element-wise multiplying the final result 
+with the permuted input, the output is then rotated to its original di -
+mensions (the same as that of the input). After completing this for each 
+of the three branches, the output is formed by averaging the three 
+resulting tensors. 
+The further sub-section describes the textual branch via knowledge 
+Fig. 7. Multi-directional visual attention module ( Misra et al., 2021 ).  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+8
+distillation-based attentional tokenization architecture. 
+3.2. Knowledge Distillation Based Attentional Caption (KDAC) module 
+This module describes the textual branch that consists of a knowl -
+edge distillation base during the pre-training phase which is an 
+approximated version of BERT, i.e., DistilBERT ( Sanh et al., 2019 ). It is a 
+smaller network used to approximate the whole output distributions of a 
+big neural network once it has been trained. The advantage of using 
+DistilBERT is that it tries to maintain as much performance as feasible 
+while optimizing the training by scaling back BERT and speeding it up. 
+Another advantage of using DistilBERT, in particular, is that it is 40% 
+smaller, 60% faster, and 97% functionally equivalent to the original 
+BERT-base model. As inputs, NLP models usually require numeric vec -
+tors, which frequently require transforming attributes like words into 
+numbers. The BERT algorithm, which Google released in 2019, is a 
+member of the class of NLP-based language models referred to as 
+transformers and has tokenizers 
+that convert sentences into numeric representations. It has been pre- 
+trained on big text datasets, making it superior to the earlier word 
+embedding methods like TF-IDF, Word2Vec, Glove, etc. As a result, the 
+word embedding produced by DistilBERT is superior. The attention 
+mechanism is used by the model to produce word embedding. It so 
+collects connections for each word based on the terms on both sides of 
+the sentence. Positionally encoded-word embedding keeps track of the 
+sequence and arrangement of each word in the sentence. It produces 
+high-quality contextualized or context-aware word embedding by 
+passing through each encoder layer. In this experiment, the DistilBERT- 
+cased model is employed (see Fig. 8 ) with 12 attention heads, 768 
+hidden layers, and six transformer layers for pre-processing. After input 
+had been tokenized, the texts were padded, the tokens were converted 
+into input ids, and then the sequence of vectors was fed into the Dis -
+tilBERT model. For the given caption, C
+j 
+with n words can be denoted as 
+C
+j 
+= {w
+j1
+.w
+j2
+.w
+j3
+, … … … .,w
+jn
+} . Each word w
+jk 
+is embedded in a 
+vector representation. v
+j
+∈ R
+d 
+is the d-dimension vector for K
+th 
+word. 
+The final tokenization is denoted as V 
+j 
+¼ {v
+j1
+, v
+j2
+, v
+j3
+, … … … , v
+jn
+}. 
+The output is generated as a set of 16 features from the text module. 
+3.3. Feature fusion 
+Social media posts that convey a user ’ s opinion are examples of 
+multi-modal data. We have carried out a cross-model feature-level 
+fusion for the detection of hate content. In multi-modal hate speech 
+detection, by effectively creating the link across modalities, the right 
+meanings of the memes must be guaranteed. Early fusion has produced 
+impressive outcomes in a number of investigations, while late fusion has 
+produced studies with good performance. The algorithm for the pro -
+posed work is given in Table 1 . 
+In the proposed study, the main component of the suggested 
+architecture is feature fusion, the combining of data from many layers. 
+Basic techniques like summation or concatenation are frequently used to 
+achieve this. Following feature fusion, the vectors are transferred to a 
+softmax (normalized exponential function) layer for hate identification. 
+4. Experimental setup 
+We conduct experiments on three hate image datasets for classifi -
+cation. We evaluate a pre-trained DistilBERT model and the SKResNext 
+model in a combined way. We have included the results for fusion 
+methods where 16 features from the image module and 16 features from 
+the text module are concatenated to a total of 32 features. Then, 32 
+features are passed to a fully connected layer resulting in the binary 
+classification as hate or non-hate. This section provides brief dataset 
+descriptions on which the experimentation is being done, various clas -
+sification metrics used for the evaluation of results, hardware re -
+quirements, pre-processing, and hyperparameter specifications. 
+4.1. Datasets 
+We have done our experimentation on three publicly available 
+datasets specifically related to hate or offensive content. The first issue 
+we found in these datasets is that in most images, the textual part and the 
+visual information both imply different things. The second issue is 
+related to the variation in the channel size of images. 
+4.1.1. Multimodal memes dataset (MultiOFF) 
+A collection of memes from multiple social platforms makes up the 
+multimodal memes dataset (MultiOFF). The 2016 U.S. Presidential 
+Election Event dataset was produced utilizing 743 memes that were 
+built from a collection of manually annotated picture URLs and text that 
+was present in the images. All the unrelated features, such as likes, 
+upvotes, timestamps, etc., have already been removed at the time of 
+dataset preparation. Furthermore, the dataset is then separated into 
+three files: Training file, Testing File, and Validation File, respectively 
+containing 445, 149, and 149 memes. 
+4.1.2. Hateful memes dataset 
+Dataset released by Facebook AI to identify the multimodal hate 
+content over internet memes. A collection of about 10000 PNG images, 
+further separated into training and testing files. The dataset is reviewed 
+by three annotators classified as binary labels. 
+4.1.3. MMHS150K dataset 
+MMHS150K dataset contains approximately 1,50,000 tweets 
+collected from Twitter and annotated using the Amazon Turk crowd -
+sourcing platform divided into six labels: No attacks, sexist, racist, 
+religion-based, homophobic, or attacks to other communities. 
+Fig. 8. Knowledge distillation based attentional caption (KDAC) architecture for caption branch: Attentional tokenization architecture.  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+9
+4.2. Classification metrics 
+Six distinct performance metrics, including accuracy, precision, 
+recall, F1-Score, area under the curve (AUC), and Mathews Correlation 
+Coefficient (MCC), were used to assess the two-class classification 
+model. Table 2 shows the general formulas for the above-mentioned 
+performance metrics, along with their ranges. Before going deep into 
+the description of the six-performance metrics, a few significant terms 
+associated with the performance are given: 
+True Positive (TP): It is described as a situation where the values for 
+the predicted and actual outcomes are both positive. 
+True Negative (TN): It is described as a situation where the values 
+for the predicted and actual outcomes are both negative. 
+False Positive (FP): A situation in which the predicted value is 
+positive but the actual value is negative. 
+False Negative (FN): A situation in which the predicted value is 
+negative but the actual value is positive. 
+Based on the above definitions of the terms, following is the expla -
+nation for the above mentioned classification metrics:  
+• Accuracy: The number of accurate (TP + TN) predictions divided by 
+the total number of predictions (TP + TN + FP + FN) is used to 
+measure the model ’ s accuracy.  
+• Precision: It is a metric used to assess a model ’ s ability to accurately 
+identify the positive class; it is calculated as the ratio of true positives 
+to both true and false positives.  
+• Recall: Recall estimates how effectively the model separates the true 
+positives and false negatives from all of the positive observations in 
+the dataset.  
+• The definition of F-Measure or F1-score is the harmonic mean of 
+recall and precision.  
+• AUC : As a measure of the model ’ s performance over all potential 
+classification thresholds, AUC is the measurement of the complete 
+two-dimensional area under the curve.  
+• Mathews Correaltion Coefficient (MCC): The correlation between 
+the observed and anticipated classes is measured by the Mathews 
+Correaltion Coefficient (MCC). MCC with a value of ’ 1 ’ denotes 
+positive correlation, whereas MCC with a value of ’ -1 ’ denotes 
+negative correlation. 
+4.3. Hardware 
+We have conducted the proposed experiment on two NVIDIA Titan 
+RTX 24 GB GPUs in parallel and the system memory used is 128 GB. 
+4.4. Pre-processing 
+For the Pre-Processing of images, the images of size (3 × 256 × 256 )
+pixel values normalized to [ 0 , 1 ] . Four-channel images with dimensions 
+[ x , y , z , w ] are taken into consideration only after changing the dimension 
+to randomly selected three channels such as [ x , y , z ] , [ x , y , w ] , [ y , z , w ] , [ x , z ,
+w ] . For the pre-processing of text, an inbuilt DistilBERT preprocessing 
+layer is utilized that tokenizes and packs inputs. Table 3 shows the 
+overall size of the datasets and the split ratio as approximately 80 : 10 :
+10 for training, testing and validation respectively. 
+4.5. Hyper parameter specification 
+The hyper parameter settings for the experiments are done on the 
+datasets are shown in Table 4 . The hyper parameters used are number of 
+epoch, batch-sizes, optimizers, learning rate and decay rate. 
+5. Results and discussion 
+This section shows the classification performance of our proposed 
+architecture in terms of accuracy, precision, recall, F1-score, area under 
+curve (AUC), and Mathews Correlation Coefficient (MCC) for each of the 
+datasets. The performance metrics signifies that the proposed architec -
+ture shows the tremendous improvements in terms of accuracy and AUC 
+with a value of 0.8078 and 0.7665 respectively in MMHS150K and an 
+Table 1 
+Algorithm for the proposed work. 
+Table 2 
+General Formulas for Classification Metrics used to Evaluate the Performance.  
+Metrics Formula Range 
+Accuracy TP + TN
+TP + TN + FP + FN 
+[ 0 , 1 ]
+Precision TP
+TP + FP 
+[ 0 , 1 ]
+Recall TP
+TP + FN 
+[ 0 , 1 ]
+F1-Score ( 2 × Recall × Precision )
+Recall + Precision 
+[ 0 , 1 ]
+AUC – [ 0 , 1 ]
+MCC TP × TN   FP × FN
+√ ( TP + FP )( TP + FN )( TN + FP )( TN + FN )
+[   1 , + 1 ]
+Table 3 
+Dataset Size and Split Ratio (Training set: Validation set: Testing set).  
+Dataset Size Training set Validation set Testing set 
+MultiOff 737 500 117 120 
+Hateful Memes 8496 6800 800 896 
+MMHS150K 140000 100000 20000 20000  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+10
+accuracy, precision, AUC with 0.7607, 0.8333, 0.8261 respectively in 
+hateful memes. For MultiOff dataset, accuracy and AUC have shown a 
+significant improvement with scores 0.6250 and 0.6557 respectively. 
+Precision, Recall and F1-scores with values 0.6700, 0.6900, and 0.6799 
+have surpassed the benchmark results for MultiOff dataset. We can 
+visualize the classification results of all three datasets in Fig. 9 . 
+5.1. MSKAV spatio-region focus 
+Due to the widespread usage of social media and digital platforms, 
+consumers are now able to express their opinions through a variety of 
+mediums. Memes are a very common way of sharing views now a day. As 
+part of images and captions in memes, both contain a significant amount 
+of information that can ’ t be ignored. The spatial region represents the 
+informative section of the image. Thus, it locates the relevant visual 
+parts according to the visual attended features Table 5 represents the 
+visualization of activation mapping by attention method, i.e., LayerCAM 
+( Jiang et al., 2021 ), to locate the fine-grained localization of objects. 
+The observations from the MSKAV Spatio region focus in images are 
+as follows:  
+• Provides better object localization by focusing on the specific spatial 
+region.  
+• The activation map by LayerCAM determines the impact of each 
+region on the output of a model. 
+5.2. Baseline comparison 
+In this section, we compare our results on MultiOff ( Suryawanshi 
+et al., 2020b ), Hateful memes ( Kiela et al., 2021 ), and MMHS150K 
+( Gomez et al., 2020 ) with their respective SOTA methods, as shown in 
+Table 6 . Notably, there are very few implemented works on multi-modal 
+hate content detection. The approaches compared in this section in -
+cludes these few contributions (( Suryawanshi et al., 2020b ), ( Lee et al., 
+2021 ), ( Kiela et al., 2021 ), ( Lee et al., 2021 ), ( Bhat et al., 2022 ), ( Gomez 
+et al., 2020 )). 
+The comparison of our proposed model with the given methods 
+shows that learning and extracting features via multi-scale and multi- 
+directional visual and caption branches improves the accuracy and 
+AUC approximately by 15% and 0.64%, respectively, in the Hateful 
+Memes dataset by 18% and 4% respectively in MMHS150K dataset. 
+5.3. Ablation study 
+This section conducts ablation experiments to examine the useful -
+ness of our proposed architecture. Numerous ablation studies are per -
+formed on MultiOff, Hateful memes, and MMHS150K datasets. Based on 
+the proposed architecture, we have generated three cases for the con -
+duction of ablation study. The first case considers only the KDAC branch 
+denoted as "KDAC (Text Branch Only)." The second case eliminates the 
+visual attention module from MSKAV branch, denoted as "MSKAV w/o 
+Attention." The last case, denoted as "MSKAV with Attention." The 
+outcomes of these ablation trials are denoted in Table 7 . 
+The ablation study leads to the observations with the following 
+conclusions:  
+1. The proposed architecture, which is a dual-branch architecture, 
+yields the best results on all three datasets.  
+2. The removal of any of the branches results in inferior prediction 
+results.  
+3. The removal of an attentional layer from MSKAV is also producing 
+low prediction results. 
+From the above observations, it can be concluded that the proposed 
+Table 4 
+Hyper parameter Specifications in terms of Number of Epochs, Batch-Size, 
+Optimizer, Learning Rate, Linear Decay.  
+Datasets Number of 
+Epochs 
+Batch- 
+Size 
+Optimizer Learning 
+Rate 
+Linear 
+Decay 
+MultiOff 40 4 Adam 0.0001 10% 
+Hateful 
+Memes 
+20 16 Adam 0.001 20% 
+MMHS150K 10 32 SGD 0.001 50%  
+Fig. 9. Classification Results in terms of Accuracy, Precision, Recall, F1-Score, AUC, and MCC.  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+11
+Table 5 
+MSKAV Spatio-Region of Importance showing the Localization via LayerCAM.  
+Datasets Memes Caption Region of focus for MSKAV branch 
+MuliOff 
+ I ’ m so evil 
+Even Satan is voting republic 
+Has a lot of money 
+Knows if Bernie wins he has to pay more taxes that will help those less 
+fortunate 
+Still supports Bernie 
+I hope the Trump foundation hasn ’ t broken any laws 
+Personally signs every check 
+Hateful 
+Memes 
+You can ’ t be racist if there is no other race 
+To see better, 
+Asians sometimes switch to fullscreen view 
+How many fucking accounts 
+Do you assholes have? 
+MMHS150K 
+ I ’ ll get you, and it ’ ll look like a bloody accident 
+Everybody knows you never go full retard 
+( continued on next page ) 
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+12
+architecture is essential and contributes to the overall performance in 
+detecting hate content in memes. 
+5.4. Generalization study 
+Despite the outstanding performance on multimodal hate content 
+datasets, most recently developed methods mainly rely on in-depth 
+design analysis within the confines of the dataset, neglecting the 
+generalization ability that is necessary when techniques must examine 
+examples from different domains or datasets. Consequently, in order to 
+demonstrate the resilience of the model, this section presents a cross- 
+dataset analysis rather than evaluating the quality of the suggested ar -
+chitecture solely on one dataset. As the model performance is evaluated 
+on three publicly available datasets (MultiOff, Hateful memes, and 
+MMHS150K), therefore, the proposed model is trained on the combi -
+nation of two datasets and tested on the third dataset to show the 
+generalizability of the architecture ( Table 8 ). 
+The graphs represent the accuracy ( Fig. 10 ) and AUC ( Fig. 11 ) 
+comparisons for the same and cross-dataset evaluation. 
+From the above-presented analysis, we can conclude that there is a 
+slight degradation in the performance but not reduced too much when 
+taken as a whole, which shows strong generalization in terms of the 
+reliability and robustness of the proposed model. 
+Table 5 ( continued ) 
+Datasets Memes Caption Region of focus for MSKAV branch 
+You ’ re a slut pig 
+Table 6 
+Comparison Table in terms of performance metrics on three benchmark datasets.  
+Datasets Methods Performance Metrics 
+Accuracy Precision Recall F1-Score AUC 
+MultiOff Suryawanshi et al. (2020b) – 0.4000 0.6700 0.5000 – 
+Lee et al. (2021) – 0.6450 0.6510 0.6460 – 
+Proposed – 0.6700 0.6900 0.6799 – 
+Hateful Memes Kiela et al. (2021) 0.6947 – – – 0.7544 
+Lee et al. (2021) 0.7580 – – – 0.8280 
+Bhat et al. (2022) 0.7108 0.7000 – 0.6900 0.7141 
+Proposed 0.8750 0.8333 - 0.6950 0.8383 
+MMHS150K Gomez et al. (2020) 0.6850 – – 0.7040 0.7340 
+Proposed 0.8078 – – 0.7049 0.7665  
+Table 7 
+Ablation Trials consider Caption Branch Only, Visual Branch w/o attention, and Visual Branch with Attention.  
+Methods Datasets 
+MultiOff Hateful Memes MMHS150K 
+Accuracy AUC Accuracy AUC Accuracy AUC 
+KDAC (Text Branch Only) 0.5667 0.3937 0.6585 0.5302 0.7437 0.4909 
+MSKAV w/o Attention 0.5333 0.5502 0.3750 0.4333 0.7500 0.3846 
+MSKAV with Attention 0.6117 0.6263 0.7607 0.8281 0.8025 0.6958 
+Proposed 0.6250 0.6557 0.8750 0.8363 0.8078 0.7665  
+Table 8 
+Depicts the generalization study when the combination of two datasets is used for training, and the third is used for testing.  
+Train Dataset Test Dataset ACC P R F1 AUC MCC 
+MultiOff + MMHS150K Hateful Memes 0.8045 0.7993 0.5711 0.6661 0.7789 0.4088 
+MultiOff + Hateful Memes MMHS150K 0.7238 0.6123 0.6793 0.6440 0.6994 0.3558 
+MMHS150K + Hateful Memes MultiOff 0.5997 0.6482 0.6384 0.6432 0.6189 0.1964  
+Fig. 10. Accuracy Comparison for Same and Cross-dataset Evaluation.  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+13
+6. Discussion 
+The proposed architecture intends to classify multimodal data into 
+two classes: Hate and No-Hate. Although there exist many forms of hate 
+but two major categories of hate can be classified as explicit and. 
+implicit hate. Accurate detection and classification of online hate is a 
+difficult task. Implicit hate identification is indeed a challenging task as 
+such content tends to have unusual syntax, polysemic words, and fewer 
+markers of prejudice (slurs). The words as vectors and syntax repre -
+sentations as co-occurrence information can be combined to detect im -
+plicit hate content online. The other way for implicit hate identification 
+in memes is to find the stronger correlation of visual features with 
+deeper semantic contextualization of text through the inclusion of 
+multimodal data. Also, to work on various forms of hate speech, one 
+must possess a strong definition of hate speech, as there are many def -
+initions of hate speech available. The presence of insulting terms in a 
+text might not convey hate speech, according to some researchers, while 
+it can be true for others. Afterward, it is very important to identify the 
+right approach towards effective text mining, information retrieval, 
+better feature exploration and feature selection, and applying non-linear 
+models or weakly supervised learning approaches. Moreover, due to the 
+inherent complexity of hate content detection, it becomes essential to 
+differentiate among various forms of hate as it might be offensive for 
+many people, and others can consider it as hate. The majority of the 
+challenge is related to the quality of publicly available datasets. Thus far, 
+the available multimodal datasets are not intended to perform hierar -
+chical multi-label classification. The proposed model can follow two 
+approaches on hierarchical multi-label datasets: a) training the model to 
+initially predict all the irrelevant tweets, which learns to classify them to 
+all the relevant target entities simultaneously, and b) training ’ n ’ one vs. 
+all binary classifier approach for each of the topics to encode the inter- 
+label dependencies among co-occurring labels. 
+7. Conclusion and further directions 
+This study introduces a novel dual-branch network composed of 
+knowledge distillation attention for extracting the essential information 
+from the caption modality and multi-kernel attention for collecting 
+pertinent information from the images. Extensive testing on three pub -
+licly accessible datasets showed that the suggested architecture out -
+performed baseline models, claiming better results in terms of accuracy 
+and AUC scores. We also conducted numerous ablation trials on the 
+datasets to conclude that the proposed architecture is contributing to the 
+performance of hate content identification in memes. Even though 
+encouraging results have been attained, there are still lots of 
+opportunities for additional research. Adversarial learning in the multi- 
+modal feature fusion module, the development of more effective feature 
+fusion techniques, the exploration of a wider variety of multimedia data, 
+such as video and audio, and an investigation into the sarcasm compo -
+nent of hate content are possible future avenues. Moreover, multimodal 
+datasets can be created to perform multi-label hierarchical classifica -
+tion. Identifying implicit hate is particularly a challenging task as 
+explicit text markers and demographic visual cues are often twisted and 
+missing. The analysis and detection of implicit harm can be seen as a 
+future task. Additionally, metaheuristic approaches, such as ALO and 
+FMO, the parameter optimization strategy, may also be used in the 
+future to address the problem of detecting hate content. 
+Ethical approval 
+There are no studies by any of the authors in this article that used 
+humans or animals as subjects. 
+Informed consent 
+Informed consent was not required as no humans or animals were 
+involved. 
+CRediT authorship contribution statement 
+Anusha Chhabra: Software, Validation, Investigation, Data cura -
+tion, Writing – original draft, Visualization, Conceptualization, Meth -
+odology. Dinesh Kumar Vishwakarma: Formal analysis, Resources, 
+Writing – review & editing, Supervision, Project administration, Fund -
+ing acquisition. 
+Declaration of competing interest 
+The authors declare that they have no known competing financial 
+interests or personal relationships that could have appeared to influence 
+the work reported in this paper. 
+Data availability 
+Data will be made available on request. 
+Acknowledgment 
+There was no specific grant from a government agency, a business, or 
+a nonprofit group for this research. 
+Fig. 11. AUC Comparison for Same and Cross-dataset Evaluation.  
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+14
+References 
+Aka Uymaz, H., Kumova Metin, S., 2022. Vector based sentiment and emotion analysis 
+from text: a survey. Eng. Appl. Artif. Intell. 113 (May), 104922 https://doi.org/ 
+10.1016/j.engappai.2022.104922 . 
+Ali, A.M., Ghaleb, F.A., Al-Rimy, B.A.S., Alsolami, F.J., Khan, A.I., 2022a. Deep ensemble 
+fake news detection model using sequential deep learning technique. Sensors 22 
+(18). https://doi.org/10.3390/s22186970 . 
+Ali, R., Farooq, U., Arshad, U., Shahzad, W., Omer, M., 2022b. Computer Speech & 
+Language Hate speech detection on Twitter using transfer learning. Comput. Speech 
+Lang 74 (February), 101365. https://doi.org/10.1016/j.csl.2022.101365 . 
+Ali, A.M., Ghaleb, F.A., Mohammed, M.S., Alsolami, F.J., Khan, A.I., 2023. Web- 
+informed-augmented fake news detection model using stacked layers of 
+convolutional neural network and deep autoencoder. Mathematics 11 (9). https:// 
+doi.org/10.3390/math11091992 . 
+Arentz, W.A., Olstad, B., 2004. Classifying offensive sites based on image content. 
+Comput. Vis. Image Underst. 94 (1 – 3), 295 – 310. https://doi.org/10.1016/j. 
+cviu.2003.10.007 . 
+Aroyehun, S.T., Gelbukh, A., 2018. Aggression detection in social media: using deep 
+neural networks, data augmentation, and pseudo labeling. In: COLING 2018 - 1st 
+Work. Trolling, Aggress. Cyberbullying, TRAC 2018 - Proc. Work., pp. 90 – 97 . 
+Arroyo-Fern ´andez, I., Forest, D., Torres-Moreno, J.M., Carrasco-Ruiz, M., Legeleux, T., 
+Joannette, K., 2018. Cyberbullying detection task: the EBSI-LIA-UNAM system (ELU) 
+at COLING ’ 18 TRAC-1. COLING 2018 - 1st Work. Trolling, Aggress. Cyberbullying, 
+TRAC 2018 - Proc. Work. 140 – 149 . 
+Bajaj, A., Vishwakarma, D.K., 2023. A State-Of-The-Art Review on Adversarial Machine 
+Learning in Image Classification. Springer US, 0123456789 . 
+Baruah, A., Barbhuiya, F.A., Dey, K., 2019. ABARUAH at SemEval-2019 task 5: Bi- 
+directional LSTM for hate speech detection. In: NAACL HLT 2019 - Int. Work. 
+Semant. Eval. SemEval 2019, Proc. 13th Work., pp. 371 – 376. https://doi.org/ 
+10.18653/v1/s19-2065 , 2017.  
+Bhat, A., Varshney, V., Bajlotra, V., Gupta, V., 2022. Detection of hatefulness in Memes 
+using unimodal and multimodal techniques. In: Proceedings of the Sixth 
+International Conference on Intelligent Computing and Control Systems (ICICCS 
+2022 ) . Iciccs, pp. 65 – 73 . 
+Chauhan, D.S., Singh, G.V., Arora, A., Ekbal, A., Bhattacharyya, P., 2022. An emoji- 
+aware multitask framework for multimodal sarcasm detection. Knowl. Base Syst. 
+257, 109924 https://doi.org/10.1016/j.knosys.2022.109924 . 
+Chhabra, A., Kumar, D., 2023. A Truncated SVD Framework for Online Hate Speech 
+Detection on the ETHOS Dataset, pp. 1 – 4 . 
+Chhabra, A., Vishwakarma, D.K., 2022. Fuzzy and Machine Learning Classifiers for Hate 
+Content Detection : A Comparative Analysis, pp. 22 – 25 . 
+Chhabra, A., Vishwakarma, D.K., 2023. A literature survey on multimodal and 
+multilingual automatic hate speech identification. Multimed. Syst., 0123456789 
+https://doi.org/10.1007/s00530-023-01051-8 . 
+Davidson, T., Warmsley, D., Macy, M., Weber, I., 2017. Automated hate speech detection 
+and the problem of offensive language. In: Proc. 11th Int. Conf. Web Soc. Media, 
+ICWSM 2017, pp. 512 – 515 . 
+De La Vega, L.G.M., Ng, V., 2019. Determining trolling in textual comments. Lr. 2018 - 
+11th Int. Conf. Lang. Resour. Eval. 3701 – 3706 . 
+Devlin, J., Chang, M.W., Lee, K., Toutanova, K., 2019. BERT: pre-training of deep 
+bidirectional transformers for language understanding. In: NAACL HLT 2019 - 2019 
+Conf. North Am. Chapter Assoc. Comput. Linguist. Hum. Lang. Technol. - Proc. Conf. , 
+vol. 1. Mlm, pp. 4171 – 4186 . 
+Djuric, N., Zhou, J., Morris, R., Grbovic, M., Radosavljevic, V., Bhamidipati, N., 2015. 
+Hate speech detection with comment embeddings. In: WWW 2015 Companion - 
+Proceedings of the 24th International Conference on World Wide Web, pp. 29 – 30. 
+https://doi.org/10.1145/2740908.2742760 . 
+Fortuna, P., Soler-Company, J., Wanner, L., 2021. How well do hate speech, toxicity, 
+abusive and offensive language classification models generalize across datasets? Inf. 
+Process. Manag. 
+French, J.H., 2017. Image based memes as sentiment predictors. In: International 
+Conference on Information Society (I-Society 2017 ) , pp. 80 – 85 . 
+Gandhi, S., et al., 2020. Scalable detection of offensive and non-compliant content/logo 
+in product images. In: Proc. - 2020 IEEE Winter Conf. Appl. Comput. Vision, WACV 
+2020, pp. 2236 – 2245. https://doi.org/10.1109/WACV45572.2020.9093454 . 
+Gomez, R., Gibert, J., Gomez, L., Karatzas, D., 2020. Exploring hate speech detection in 
+multimodal publications. In: Proc. - 2020 IEEE Winter Conf. Appl. Comput. Vision, 
+WACV 2020, pp. 1459 – 1467. https://doi.org/10.1109/WACV45572.2020.9093414 . 
+He, S., Zheng, X., Wang, J., Chang, Z., Luo, Y., Zeng, D., 2016. Meme extraction and 
+tracing in crisis events. In: IEEE Int. Conf. Intell. Secur. Informatics Cybersecurity Big 
+Data, ISI 2016, pp. 61 – 66. https://doi.org/10.1109/ISI.2016.7745444 . 
+Hu, W., Wu, O., Chen, Z., Fu, Z., Maybank, S., 2007. Recognition of pornographic Web 
+pages by classifying texts and images. IEEE Trans. Pattern Anal. Mach. Intell. 29 (6), 
+1019 – 1034. https://doi.org/10.1109/TPAMI.2007.1133 . 
+Huang, F., Zhang, X., Zhao, Z., Xu, J., Li, Z., 2019. Image – text sentiment analysis via 
+deep multimodal attentive fusion. Knowl. Base Syst. 167, 26 – 37. https://doi.org/ 
+10.1016/j.knosys.2019.01.019 . 
+Jiang, P.T., Bin Zhang, C., Hou, Q., Cheng, M.M., Wei, Y., 2021. LayerCAM: exploring 
+hierarchical class activation maps for localization. IEEE Trans. Image Process. 30 
+(June), 5875 – 5888. https://doi.org/10.1109/TIP.2021.3089943 . 
+Kakumanu, P., Makrogiannis, S., Bourbakis, N., 2007. A survey of skin-color modeling 
+and detection methods. Pattern Recogn. 40 (3), 1106 – 1122. https://doi.org/ 
+10.1016/j.patcog.2006.06.010 . 
+Kiela, D., et al., 2021. The hateful memes challenge: detecting hate speech in multimodal 
+memes. arXiv:2005.04790v3 [cs.AI] , pp. 1 – 17[Online]. Available: http://arxiv. 
+org/abs/2005.04790 . 
+Le-hong, P., 2021. Knowledge-Based Systems Diacritics generation and application in 
+hate speech detection on Vietnamese social networks. Knowl. Base Syst. 233, 107504 
+https://doi.org/10.1016/j.knosys.2021.107504 . 
+Lee, R.K.W., Cao, R., Fan, Z., Jiang, J., Chong, W.H., 2021. Disentangling hate in online 
+memes. Associat. Comput. Mach. 1 (1) . 
+Li, X., Wang, W., Hu, X., Yang, J., 2019. Selective kernel networks. IEEE Comput. Soc. 
+Conf. Comput. Vis. Pattern Recogn. 2019-June, 510 – 519. https://doi.org/10.1109/ 
+CVPR.2019.00060 . 
+Liu, Y., et al., 2019. RoBERTa: a robustly optimized BERT pretraining approach. ICLR no. 
+1, [Online]. Available: http://arxiv.org/abs/1907.11692 . 
+Lu, J., Batra, D., Parikh, D., Lee1, Stefan, 2019. ViLBERT: Pretraining Task-Agnostic 
+Visiolinguistic Representations for Vision-And-Language Tasks . 
+Ma, H., Wang, J., Qian, L., Lin, H., 2021. HAN-ReGRU: hierarchical attention network 
+with residual gated recurrent unit for emotion recognition in conversation. Neural 
+Comput. Appl. 33 (7), 2685 – 2703. https://doi.org/10.1007/s00521-020-05063-7 . 
+Martín, A., Camacho, D., 2022. Recent advances on effective and efficient deep learning- 
+based solutions. Neural Comput. Appl. 34 (13), 10205 – 10210. https://doi.org/ 
+10.1007/s00521-022-07344-9 . 
+Misra, D., Nalamada, T., Arasanipalai, A.U., Hou, Q., 2021. Rotate to attend: 
+convolutional triplet attention module. Proc. - 2021 IEEE Winter Conf. Appl. 
+Comput. Vision, WACV 2021 3138 – 3147. https://doi.org/10.1109/ 
+WACV48630.2021.00318 . 
+Niu, A.E.T., Zhu, S., Pang, L., 2016. Sentiment analysis on multi-view social data. Lect. 
+Notes Comput. Sci. 9517. https://doi.org/10.1007/978-3-319-27674-8_2 . 
+Pandey, A., Vishwakarma, D.K., 2023. VABDC-Net: a framework for Visual-Caption 
+Sentiment Recognition via spatio-depth visual attention and bi-directional caption 
+processing. Knowl. Base Syst. 269, 110515 https://doi.org/10.1016/j. 
+knosys.2023.110515 . 
+Poria, S., Cambria, E., Gelbukh, A., 2015. Deep convolutional neural network textual 
+features and multiple kernel learning for utterance-level multimodal sentiment 
+analysis. Conf. Proc. - EMNLP 2015 Conf. Empir. Methods Nat. Lang. Process. 
+(September), 2539 – 2544. https://doi.org/10.18653/v1/d15-1303 . 
+Poria, S., Cambria, E., Howard, N., Bin Huang, G., Hussain, A., 2016. Fusing audio, visual 
+and textual clues for sentiment analysis from multimodal content. Neurocomputing 
+174, 50 – 59. https://doi.org/10.1016/j.neucom.2015.01.095 . 
+Poria, S., Chaturvedi, I., Cambria, E., Hussain, A., 2017. Convolutional MKL based 
+multimodal emotion recognition and sentiment analysis. In: 2016 IEEE 16th Int. 
+Conf. Data Min., pp. 439 – 448. https://doi.org/10.1109/icdm.2016.0055 . 
+Poria, S., Majumder, N., Hazarika, D., Cambria, E., Gelbukh, A., Hussain, A., 2018. 
+Multimodal sentiment analysis: addressing key issues and setting up the baselines. 
+IEEE Intell. Syst. 33 (6), 17 – 25. https://doi.org/10.1109/MIS.2018.2882362 . 
+Rajput, G., Punn, N.S., Sonbhadra, S.K., Agarwal, S., 2021. Hate speech detection using 
+static BERT embeddings. Lect. Notes Comput. Sci. 13147 LNCS (March), 67 – 77. 
+https://doi.org/10.1007/978-3-030-93620-4_6 . 
+Rani, P., Suryawanshi, S., Goswami, K., Chakravarthi, B.R., Fransen, T., McCrae, J.P., 
+2020. A comparative study of different state-of-the-art hate speech detection 
+methods in {H}indi-{E}nglish code-mixed data. Proc. Second Work. Trolling, 
+Aggress. Cyberbullying 42 – 48 no. May .  
+Ranjan, P., Raja, B., Priyadharshini, R., Balabantaray, R.C., 2016. A comparative study 
+on code-mixed data of Indian social media vs formal text. In: Proc. 2016 2nd Int. 
+Conf. Contemp. Comput. Informatics, IC3I 2016, pp. 608 – 611. https://doi.org/ 
+10.1109/IC3I.2016.7918035 . 
+Saidi, F., Trabelsi, Z., Thangaraj, E., 2022. A novel framework for semantic classification 
+of cyber terrorist communities on Twitter. Eng. Appl. Artif. Intell. 115 (August), 
+105271 https://doi.org/10.1016/j.engappai.2022.105271 . 
+Sanh, V., Debut, L., Chaumond, J., Wolf, T., 2019. DistilBERT, a Distilled Version of 
+BERT: Smaller, Faster, Cheaper and Lighter. neurIPS, pp. 2 – 6 [Online]. Available: htt 
+p://arxiv.org/abs/1910.01108 . 
+Schmidt, A., Wiegand, M., 2017. A survey on hate speech detection using natural 
+language processing. In: Soc. 2017 - 5th Int. Work. Nat. Lang. Process. Soc. Media, 
+Proc. Work. AFNLP SIG Soc.,, pp. 1 – 10. https://doi.org/10.18653/v1/w17-1101 , 
+2012.  
+Sharma, P., Ding, N., Goodman, S., Soricut, R., 2018. Conceptual captions: a cleaned, 
+hypernymed, image alt-text dataset for automatic image captioning. ACL 2018 - 56th 
+Annu. Meet. Assoc. Comput. Linguist. Proc. Conf. (Long Pap. 1, 2556 – 2565 . 
+Sharma, A., Kabra, A., Jain, M., 2022. Ceasing hate with MoH: hate speech detection in 
+Hindi – English code-switched language. Inf. Process. Manag. 59 (1) . 
+Shi, X., Liu, X., Xu, C., Huang, Y., Chen, F., Zhu, S., 2022. Cross-lingual offensive speech 
+identification with transfer learning for low-resource languages. Comput. Electr. 
+Eng. 101 (April), 108005 https://doi.org/10.1016/j.compeleceng.2022.108005 . 
+Suryawanshi, S., Chakravarthi, B.R., Verma, P., Arcan, M., McCrae, J.P., Buitelaar, P., 
+2020a. A dataset for troll classification of Tamil memes. Proc. WILDRE5 – 5th Work. 
+Indian Lang. Data Resour. Eval. 1 (May), 7 – 13 [Online]. Available: https://www. 
+aclweb.org/anthology/2020.wildre-1.2 . 
+Suryawanshi, S., Chakravarthi, B.R., Arcan, M., Buitelaar, P., 2020b. Multimodal meme 
+dataset (MultiOFF) for identifying offensive content in image and text. In: Proc. 
+Second Work. Trolling, Aggress. Cyberbullying. Decem, no. May, pp. 32 – 41, 2020, 
+[Online]. Available: https://www.aclweb.org/anthology/2020.trac-1.6 . 
+Tian, C., Zhang, X., Wei, W., Gao, X., 2018. Color pornographic image detection based on 
+color-saliency preserved mixture deformable part model. Multimed. Tools Appl. 77 
+(6), 6629 – 6645. https://doi.org/10.1007/s11042-017-4576-2 . 
+Warner, W., Hirschberg, J., 2012. Detecting hate speech on the world wide web. In: 
+Proceeding LSM ’ 12 Proceedings of the Second Workshop on Language in Social 
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        
+
+Engineering Applications of Artificial Intelligence 126 (2023) 106991
+15
+Media. Lsm, pp. 19 – 26 [Online]. Available: http://dl.acm.org/citation.cfm? 
+id = 2390374.2390377 . 
+Waseem, Z., Davidson, T., Warmsley, D., Weber, I., 2017. Understanding abuse: a 
+typology of abusive language detection subtasks. Proc. First Work. Abus. Lang. 
+Online 78 – 84. https://doi.org/10.18653/v1/w17-3012 . 
+Watanabe, H., Bouazizi, M., Ohtsuki, T., 2018. Hate speech on twitter: a pragmatic 
+approach to collect hateful and offensive expressions and perform hate speech 
+detection. IEEE Access 6, 13825 – 13835. https://doi.org/10.1109/ 
+ACCESS.2018.2806394 . 
+Wullach, T., Adler, A., Minkov, E., 2022. Character-level HyperNetworks for hate speech 
+detection. Expert Syst. Appl. 205 (May), 117571 https://doi.org/10.1016/j. 
+eswa.2022.117571 . 
+Xie, S., Girshick, R., Doll ´ar, P., Tu, Z., He, K., 2017. Aggregated residual transformations 
+for deep neural networks. In: Proc. - 30th IEEE Conf. Comput. Vis. Pattern 
+Recognition, CVPR 2017, 2017-Janua, pp. 5987 – 5995. https://doi.org/10.1109/ 
+CVPR.2017.634 . 
+Yadav, A., Kumar Vishwakarma, Dinesh, 2023. MRT-Net: auto-adaptive weighting of 
+manipulation residuals and texture clues for face manipulation detection. Expert 
+Syst. Appl. 232 https://doi.org/10.1016/j.eswa.2023.120898 . 
+Yang, Z., Dai, Z., Yang, Y., Carbonell, J., Salakhutdinov, R., Le, Q.V., 2019. XLNet: 
+generalized autoregressive pretraining for language understanding. Adv. Neural Inf. 
+Process. Syst. 32 (NeurIPS), 1 – 18 . 
+Yu, X., Li, Y., Li, X., Wang, L., Wang, K., 2023a. Research on outdoor mobile music 
+speaker battery management algorithm based on dynamic redundancy. Technologies 
+11 (2), 1 – 11. https://doi.org/10.3390/technologies11020060 . 
+Yu, X., Ma, N., Zheng, L., Wang, L., Wang, K., 2023b. Developments and Applications of 
+Artificial Intelligence in Music Education. MDPI Technol. https://doi.org/10.3390/ 
+technologies11020042 
+Zampieri, M., et al., 2020. SemEval-2020 task 12: multilingual offensive language 
+identification in social media (OffensEval 2020). In: Proc. Int. Work. Semant. Eval. , 
+No. OffensEval . 
+Zhang, M., et al., 2023a. A review of SOH prediction of Li-ion batteries based on data- 
+driven algorithms. Energies 16 (7). https://doi.org/10.3390/en16073167 . 
+Zhang, M., et al., 2023b. Electrochemical impedance spectroscopy: a new chapter in the 
+fast and accurate estimation of the state of health for lithium-ion batteries. Energies 
+16 (4), 1 – 16. https://doi.org/10.3390/en16041599 . 
+A. Chhabra and D.K. Vishwakarma                                                                                                                                                                                                        

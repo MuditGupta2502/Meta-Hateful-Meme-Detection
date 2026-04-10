@@ -1,0 +1,731 @@
+Effective multimodal hate speech detection on Facebook hate memes 
+dataset using incremental PCA, SMOTE, and adversarial learning
+Emmanuel Ludivin Tchuindjang Tchokote
+a , *
+, Elie Fute Tagne
+a , b
+a
+Department of Computer Engineering, Faculty of Engineering and Technology (FET), University of Buea, P.O. Box 63, Buea, Cameroon
+b
+Department of Mathematics and Computer Science, Faculty of Science (FS), University of Dschang, P.O. Box 67, Dschang, Cameroon
+ARTICLE INFO
+Keywords:
+Online content moderation
+Incremental PCA
+SMOTE
+Adversarial machine learning
+Multimodal classification
+ABSTRACT
+The proliferation of harmful information, such as hate speech and online harassment, has increased in recent 
+years due to social media ’ s explosive expansion. Using the Facebook Hate Meme Dataset (FBHM), we create a 
+reliable model in this work for identifying multimodal hate speech on online platforms. To effectively address 
+class imbalance and improve classification accuracy, our hybrid model combines ResNet for image processing 
+with RoBERTa for text analysis, leveraging Synthetic Minority Over-sampling Technique (SMOTE) and Incre -
+mental Principal Component Analysis (PCA) combined with adversarial machine learning techniques. The 
+combination of Incremental PCA ’ s dimensionality reduction and SMOTE ’ s synthetic sample creation produces a 
+potent combination that enhances the training dataset and maximizes feature representation, resulting in 
+improved online content moderation techniques. We achieved an accuracy of 81.80 %, and a Macro-F1 score of 
+81.53 % on the FBHM dataset which represents an 18 % improvement in accuracy over the base model. These 
+results provide significant novel insights into this important field of study by demonstrating the potential of 
+adversarial approaches in creating reliable models for automated hate speech identification that can help create a 
+safer online environment and can significantly reduce the emotional burden on human content moderators by 
+handling the contents quickly and accurately. This study highlights the mutually beneficial effect of combining 
+SMOTE and incremental PCA, demonstrating how they improve the model ’ s ability to correct class imbalance 
+and boost performance. The source code and dataset are publicly available on GitHub to facilitate reproducibility 
+and further research. Link to the code and dataset below:
+https://github.com/ludivintchokote/HatePostDetection
+1. Introduction
+The rise of social media platforms has led to an increase in the 
+propagation of harmful content, including hate speech and online 
+harassment. Effectively identifying this type of content has become an 
+important area of research, especially regarding multimodal data that 
+encompasses both text and images. Online hate ( Waqas, Salminen, Jung, 
+Almerekhi & Jansen BJ, 2019 ) encompasses a variety of prejudiced 
+expressions aimed at individuals or groups based on characteristics such 
+as race, religion, gender, and sexual orientation. This type of content can 
+manifest in derogatory comments, threats, and dehumanizing language, 
+often leading to serious emotional and psychological consequences for 
+victims. The impact of online hate ( Barth, Wagner, Raab & Wieg ¨artner, 
+2023 ) is exacerbated by its diverse manifestations across various media 
+formats, which complicates efforts to address it comprehensively. As the 
+digital environment continues to evolve, understanding the dynamics 
+and consequences of online hate is essential for fostering a safer online 
+community for all users. However, a significant challenge in developing 
+effective hate speech detection systems lies in addressing inherent biases 
+within the datasets used for training.
+The Facebook Hateful Memes dataset ( Kiela, Mohan & Firooz, 2020 ) 
+is a pioneering resource developed by Facebook AI to aid researchers in 
+the detection of multimodal hate speech, which combines both text and 
+images. The dataset suffers from class imbalance, thus presenting a 
+shared challenge in machine learning, where examples are not evenly 
+distributed among various classes. Imbalanced data presents significant 
+challenges for machine learning algorithms, often resulting in biased 
+models that underperform on the minority class. Numerous strategies 
+( Surani, Domaratzki & Saman, 2024 ) have been suggested to tackle class 
+imbalance, yet a considerable research gap remains in effectively 
+* Corresponding author.
+E-mail addresses: tchuindjang.tchokote@ubuea.cm (E.L.T. Tchokote), fute.tagne@ubuea.cm (E.F. Tagne). 
+Contents lists available at ScienceDirect
+Machine Learning with Applications
+journal homepag e: www.el sevier.com/loc ate/mlwa
+https://doi.org/10.1016/j.mlwa.2025.100647
+Received 19 December 2024; Received in revised form 14 March 2025; Accepted 27 March 2025  
+Machine Learning with Applications 20 (2025) 100647 
+Available online 17 April 2025 
+2666-8270/© 2025 The Authors. Published by Elsevier Ltd. This is an open access article under the CC BY-NC-ND license ( http://creativecommons.org/licenses/by- 
+nc-nd/4.0/ ). 
+
+managing abnormal instances within the minority class while applying 
+re-balancing techniques. Many current approaches find it difficult to 
+sustain prediction accuracy when creating synthetic data in the context 
+of these abnormal instances.
+Overall, since communication on social media primarily occurs 
+through images and text, the innovative techniques developed for 
+detecting online hate content remain vulnerable to multimodal adver -
+sarial attacks. These attacks aim to disrupt the classification abilities of 
+detection systems, leading to the misclassification of hate content. 
+Achieving high accuracy in predictions is important for effective hate 
+content detection, as both false positives and false negatives can have 
+serious repercussions. Frequent false positives may provoke backlash 
+from users who believe their posts are being unjustly suppressed and 
+censored, while false negatives can allow hate content to spread un -
+checked. The primary goal of this research is to develop a robust 
+multimodal model for detecting hate online content, specifically utiliz -
+ing the combination of Incremental PCA, SMOTE, and adversarial 
+training on the Facebook Hate Meme Dataset to address challenges 
+related to class imbalance and adversarial robustness. This combination 
+enhances data representation, balances class distributions, and improves 
+robustness against adversarial attacks.
+The rest of this research is organized as follows: Section 2 delves 
+deeper into previous works related to multimodal deep learning 
+frameworks, adversarial machine learning techniques, dimensionality 
+reduction, and class imbalance handling. Section 3 describes the pro -
+posed approach, and Section 4 presents the results from the experiments 
+conducted and compares them with previous works. Finally, Section 5
+concludes and outlines future open research directions.
+2. State of the art
+2.1. Multimodal deep learning frameworks
+Chhabra et al. ( Chhabra & Vishwakarma, 2023 ) introduced a novel 
+architecture that employs multi-scale visual kernels combined with 
+knowledge distillation techniques for detecting hateful memes. This 
+framework extracts relevant features from visual content while ensuring 
+the model learns effectively from visual and textual data sources. Their 
+results demonstrate improved performance in identifying memetic hate 
+speech compared to conventional methods.
+A notable study by Singh et al. ( Singh, Vajrobol & Aggarwal, 2023 ) 
+investigates the effectiveness of using XLM-Roberta-base for detecting 
+hate speech in multimodal data, particularly in text-embedded images. 
+The research utilized a dataset comprising over 4700 images related to 
+the Russia-Ukraine conflict and found that XLM-Roberta-base out -
+performed other classifiers, achieving an F1 score of 84.62 for identi -
+fying hate speech targets. This study emphasizes the importance of 
+integrating advanced deep-learning models to improve detection accu -
+racy across different content types.
+Today, memes represent the most prevalent forms of multimodal 
+communication on social media. Although often created with ironic 
+intent, they can also convey hateful messages directed at various in -
+dividuals or groups. Recent research by Hee et al. ( Hee, Lee & Chong, 
+2022 ) suggests that the most effective multimodal approach combines 
+textual and visual features utilizing transformer-based architectures, 
+such as ViLBERT and Visual-BERT. These methods have been bench -
+marked against other unimodal and multimodal strategies, establishing 
+them as a baseline for this challenge and underscoring the necessity for 
+multimodal analysis in detecting hate content. Despite achieving 
+approximately 75 % accuracy, these models still lag behind human 
+performance, highlighting the need to develop new machine-learning 
+models.
+2.2. Adversarial machine learning techniques
+Several innovative defense strategies have been proposed in the 
+literature to protect hate speech detection models from adversarial at -
+tacks. Most of these strategies utilize adversarial training to manage 
+perturbations effectively. Tran et al., ( Tran et al., 2020 ) implemented 
+adversarial training to defend against Fast Gradient Method (FGM) at -
+tacks by augmenting FGM with a customizable and detailed noise 
+magnitude, adding noise (perturbation) to misleading samples. The hate 
+speech detection model they developed demonstrates a superior un -
+derstanding of hate speech datasets, operates 4 – 5 times faster than the 
+conventional BERT model, consumes less than one-third of the memory, 
+and achieves enhanced classification performance.
+Wang et al., ( Wang, Wang, Ke & Wang, 2021 ) introduce a defensive 
+tool called TextFirewall designed for sentiment analysis algorithms. This 
+tool leverages the disparity between the predictions made by sentiment 
+analysis models and the calculated impact value of words, which reflects 
+their positive or negative influence on sentiment polarity. TextFirewall 
+successfully detects adversarial texts produced by three leading attack 
+methods and surpasses earlier defense strategies. Specifically, it ach -
+ieves an average accuracy of 90.7 % on the IMDB dataset and 96.9 % on 
+the Yelp dataset when countering these attacks. Notably, TextFirewall 
+can function as a third-party tool without requiring modifications to the 
+target model and is effective against various types of adversarial texts.
+Aggarwal et al., ( Aggarwal et al., 2023 ) conducted a case study to 
+examine the weaknesses of current hateful meme detection systems in 
+the face of external adversarial attacks. They identified nine distinct 
+types of attacks to assess how susceptible these detection systems are to 
+human-induced adversarial inputs, they discovered that all models 
+tested exhibited significant vulnerabilities, with some experiencing up 
+to a 10 % decrease in macro-F1 performance under certain conditions. 
+To resolve these vulnerabilities, they proposed two countermeasures: 
+one based on contrastive learning and the other on adversarial training. 
+For the countermeasure involving adversarial training, the model was 
+not only trained on existing data points but also on adversarial examples 
+created by altering one modality of the input data while keeping another 
+constant. Specifically, for image data, they focused on image-region 
+features instead of modifying individual pixels.
+2.3. Dimensionality reduction and class imbalance handling
+Basgall et al., ( Basgall, Hasperue, Naiouf & Fernandez, 2018 ) intro -
+duced a fully scalable preprocessing technique (SMOTE-BD) designed to 
+solve imbalanced classification in Big Data. They used the SMOTE al -
+gorithm, to create new synthetic samples based on the proximity of 
+minority class instances. SMOTE-BD is designed to operate indepen -
+dently of the number of partitions or processes, thereby enhancing its 
+efficiency.
+Mohammed et al., ( Mohammed, Hassan & Kadir, 2020 ) used a novel 
+dataset called ZADA, which includes medical information from over 
+7000 patients in Zakho, Iraq, to build a system to assess and detect pa -
+tients with disproportionate diabetes. They diagnosed diabetes using six 
+machine learning techniques and they corrected class imbalance by 
+using a classification analysis that included the SMOTE resampling 
+approach with three normalization strategies. Their study showed that 
+the performance of the classification models based on minority class 
+distribution was much enhanced by both the resampling and normal -
+izing techniques.
+Mulla et al., ( Mulla, Demir & Hassan, 2021 ) performed a method that 
+combined SMOTE oversampling with PCA to solve imbalance problems 
+in high dimensional data. They used Logistic Regression, K-Nearest 
+Neighbor, and Decision Tree methods on two separate datasets to 
+evaluate their method efficiency and to determine their classifiers ’ 
+performance. They used WEKA with the algorithms above to analyze 
+raw datasets and converted datasets by PCA, SMOTE, and SMOTE + PCA. 
+The results they obtained showed that almost all classification algo -
+rithms improved their classification accuracy using PCA, SMOTE, and 
+SMOTE + PCA methods, with the SMOTE method giving the most effi -
+cient result for data rebalancing and K-Nearest Neighbor having the 
+E.L.T. Tchokote and E.F. Tagne                                                                                                                                                                                                             Machine Learning with Applications 20 (2025) 100647 
+2 
+
+highest classification performance among the other algorithms.
+3. Methodology
+3.1. Data preparation and processing
+Principal Component Analysis (PCA) . It is a statistical procedure 
+( Gewers et al., 2021 ) concerned with elucidating the covariance struc -
+ture of a set of variables. In particular, it permits us to identify the 
+principal directions in which the data varies. The main goal of PCA is to 
+reduce the dimensionality of a dataset while maintaining the most 
+important patterns between the variables without any prior knowledge 
+of the target variables. Before applying PCA, the features are standard -
+ized to have a mean of zero and a variance of one. 
+X
+ʹ
+=
+X   μ
+σ
+(1) 
+Where: 
+• X is the feature vector.
+• X ′ is the standardized value.
+• μ is the mean of the feature values.
+• σ is the standard deviation.
+Incremental PCA in our case allows for the processing of data in 
+smaller batches, this enables us to update the principal components 
+rather than loading the entire dataset into memory as shown in Eq. (3) . 
+This approach is very effective when dealing with large datasets or 
+streaming data. Before applying Incremental PCA to the FBHM dataset, 
+the features we extracted from both modalities (image and text) are 
+standardized as shown in Eq. (1) . This helps us to ensure that each 
+feature contributes equally to the distance calculations during PCA. 
+Given that our dataset X is represented as a matrix where each row is a 
+sample and each column is a feature, we can find the lower-dimensional 
+representation of Z such that: 
+Z = XW (2) 
+Where: 
+• W is the matrix of principal components obtained from PCA
+• The principal components are computed by maximizing the variance 
+of Z.
+The update rule for Incremental PCA can be expressed as: 
+W
+new
+= W
+old
++ Δ w (3) 
+Where Δ w represents the change in principal components based on the 
+new batch of data.
+To efficiently control memory use, we processed the dataset in 
+batches. For each batch of features, we updated the scaler with the new 
+batch of features. After scaling, we updated the principal components 
+based on the scaled features. After processing every batch, we looped 
+through the dataset once more to transform all features, thereby 
+reducing the dimensionality of the features while retaining the most 
+essential information. We created a single feature set that captures in -
+formation from both modalities by concatenating the reduced picture 
+and text features after dimensionality reduction. After that, this merged 
+feature set was ready for additional processing, including using SMOTE 
+to address class imbalance.
+SMOTE Implementation . After dimensionality reduction, we 
+applied SMOTE to generate synthetic samples to balance the class dis -
+tribution. For a minority class sample x
+i
+, SMOTE selects one or more 
+nearest neighbors x
+j 
+based on a distance metric (Euclidean distance). Eq. 
+(4) shows how a synthetic sample x
+new 
+can be generated. 
+x
+new
+= x
+i
++ r
+ 
+x
+j
+  x
+i
+)
+(4) 
+Where: 
+• r is a random number in the range [0,1]
+• the equation creates a point along the line segment between x
+i
+and 
+its neighbor x
+j
+To mitigate potential biases present in the FBHM dataset, we 
+implemented the following strategies in conjunction with incremental 
+PCA and SMOTE: 
+• Data augmentation: While SMOTE helps address the class imbalance 
+thereby reducing bias towards the majority class, the use of pre- 
+trained models (ResNet50 and RoBERTa) can be considered a form 
+of transfer learning. These pre-trained models have learned features 
+from features from larger datasets, which is beneficial for smaller 
+and potentially biased datasets.
+• Class weighting: To explicitly reduce bias, we calculated the class 
+weights based on the inverse class frequencies in the training data 
+and applied them to the loss function. By doing so, we address bias by 
+penalizing misclassification more heavily on minority classes
+3.2. Model architecture
+Classification of data with class imbalance problems as well as 
+building robust models against adversarial attacks is a great center of 
+interest for researchers in different scientific domains. This study pro -
+poses a new method based on combining adversarial learning with 
+SMOTE (for rebalancing) and PCA (for dimensionality reduction) to 
+enhance the robustness and improve the accuracy of our classification 
+model.
+Multimodal Neural Network . We proposed an ensemble model that 
+combines pre-trained transformer model (RoBERTa) for text processing 
+and ResNet-50 for image processing. Fig. 1 shows an overview of the 
+ensemble model used.
+The pretrained models are combined using a simple feedforward 
+neural network. The aim is to enable the model learn features from both 
+forms of data and fuse them into a unified representation as shown in 
+Fig. 1 . Studies performed by Alec et al., ( Alec et al., 2021 ) revealed deep 
+CNN as a state-of-the-art method in image classification tasks. We 
+choose ResNet50 because it uses pretrained deep CNN to extract visual 
+features. We used google vision API to extract the text from the memes, 
+the extracted text is then passed to RoBERTa to learn the textual fea -
+tures. RoBERTa ’ s main innovation is that it uses a more robust and 
+efficient pretraining approach, which allows it to obtain better results on 
+most NLP tasks. We concatenated the combined features from both 
+modalities and passed it through a fully connected layer to produce class 
+scores.
+3.3. Training procedure
+As shown in Fig. 2 , the method starts with using the original dataset, 
+and then we started by checking if it is imbalanced (i.e. if the number of 
+labels in the hateful class is not equals to the number of labels in the non- 
+hateful class for the training set). If the training set is imbalanced, then 
+we balanced it by applying incremental PCA (to first reduce the 
+dimensionality of the data)and SMOTE method. Else, we proceeded to 
+creating adversarial dataloaders to be able to add adversarial examples 
+in the training set to be used during the training process. For the 
+adversarial examples used during training, we mainly focused on the 
+model-independent attacks which can be introduced by humans with 
+little technical expertise. Some examples of these attacks are developed 
+later in another section of this research. A random number between 1 
+and 10 was generated for each batch of data, if the number generated 
+E.L.T. Tchokote and E.F. Tagne                                                                                                                                                                                                             Machine Learning with Applications 20 (2025) 100647 
+3 
+
+was greater than 1 then the text and image data were further augmented 
+using one of the various augmentation operations offered by the Augly 
+library we used. For each epoch, we computed the loss, validated the 
+model on the validation set and stored the model with the highest 
+validation accuracy.
+Adversarial Examples . Adversarial attacks in machine learning are 
+designed to manipulate or deceive models by creating inputs that are 
+specifically crafted to cause misclassifications. These attacks can be 
+categorized based on their nature, such as the level of access to the 
+model (white-box, black-box, gray-box) and the type of manipulation 
+(evasion, poisoning, exploratory). In this section, we focused on specific 
+types of attacks related to text and image manipulation, such as those 
+found in Augly. The attack nature of the attacks considered are black- 
+box attacks and the types are evasion attacks. Let ’ s consider the text 
+extracted from the meme shown in Fig. 3 , “ Muslims offend me ” We 
+thought of the different attack forms for text, as shown in Table 1 . In text 
+manipulation, adversarial attacks often involve modifying the input text 
+to deceive the NLP model. Some specific examples are shown in Table 1 .
+For scenarios where we cannot predetermine the internal behavior of 
+the threat model, the attacker cannot appropriately generate attacks 
+using gradient information. However, the attackers can introduce 
+random modifications to the image while preserving its message. We 
+considered the attacks as shown in Fig. 3 . In image manipulation, 
+adversarial attacks often involve modifying images to deceive computer 
+vision models. The perturbation factor for the attack listed below was set 
+to 0.2. Below are some specific examples: 
+• Blur: Applying a blur effect to an image reduces its clarity and 
+potentially misleads the model.
+• Color Jitter: Modifying the color balance or intensity of an image can 
+affect how models perceive it
+• Stripes: adding stripes or patterns to an image can disrupt the 
+model ’ s ability to recognize objects
+• Random Noise: Adding random noise to an input image can disrupt 
+clarity and mislead the model.
+• Shuffle pixels: Randomly rearranging pixels in an image can signif -
+icantly alter its appearance and challenge the model to correctly 
+classify it.
+4. Implementation and results
+In this section, we described the environment in which the study was 
+carried out and we presented the results obtained for the classification of 
+memes into hate and non-hateful content.
+4.1. Dataset
+We used the Facebook Hate Meme (FBHM) dataset ( Price, 2020 ) 
+provided by Facebook AI. The dataset contains 10,000 memes collected 
+from Getty images and has been annotated in a semi-artificially manner 
+by benign confounders. The dataset is made up of five classes of memes 
+which are multimodal hate, unimodal hate, benign image, benign text, 
+and random not-hateful examples. We labeled the first four classes of 
+memes as hateful and the rest as non-hateful. The dataset was split into 
+85 % training, 5 % development, and 10 % test sets.
+The content types of the dataset include racist, and sexist memes and 
+also contents that incites violence or targets protected categories like 
+religion, gender, and sexual orientation. Table 2 describes the dataset 
+size and label distribution
+4.2. Experimental setup
+Image Branch . We resized and normalized the input image before 
+passing it to our pretrained ResNet50 model. The output of the last 
+convolutional layer of the ResNet50 model was extracted as the image 
+feature map with a tensor shape of (16, 2048).
+Text Branch . We extracted the text from the meme, and divided it 
+into subwords through a process called tokenization. We accomplished 
+it using the WordPiece algorithm, which divides words into sub-words 
+based on their frequency and patterns of co-occurrence. We used a 
+learned embedding matrix to subsequently transform each token into a 
+numerical representation known as embedding. These embeddings 
+encapsulate the semantic meaning of each token. We passed the text 
+tensor of shape (16, 768) through the RoBERTa encoder to enable the 
+model to capture the contextual relationships between the tokens.
+Classifier and Training . To obtain the multimodal comprehensive 
+features, we concatenated the image and text tensors along the feature 
+dimension to create a new tensor of shape (16, 2 × 768). We passed the 
+concatenated tensor through two fully connected layers with ReLU 
+activation functions, followed by a final fully connected layer with no 
+Fig. 1. Overview of multimodal model.
+E.L.T. Tchokote and E.F. Tagne                                                                                                                                                                                                             Machine Learning with Applications 20 (2025) 100647 
+4 
+
+activation function. And we finally passed the output tensor through 
+another feedforward neural network defined by the MLP module as 
+shown in Fig. 1 . Our approach uses late fusion to effectively capture the 
+unique contributions of each modality. This is crucial when the text and 
+images convey conflicting information, as it will allow the model to 
+weigh the importance of each modality ’ s contribution to resolve the 
+ambiguity.
+We trained the model for 20 epochs on Adam optimizer with learning 
+rate 1e-5, weight decay 0.1. We chose a batch size of 12, and Adam 
+optimizer with early stopping to avoid overfitting and implement a 
+balanced approach for generating adversarial examples i.e., to have 
+equal number of adversarial examples and original samples in the batch 
+during the training process whenever a batch is to contain adversarial 
+examples. The number of components selected for incremental PCA was 
+512 and the batch size 200 because of the limited memory setting in 
+which we carried out the experiment. This leads to more computational 
+time to process the batches and transform the data before training. For 
+SMOTE parameters, we reduced the number of k neighbors to 3, to make 
+the process of selecting neighbors and interpolating between points 
+faster, this also decreases the computational effort required for distance 
+calculations and sorting. These experiments were run using PyTorch 2.0, 
+python 3.11, and Windows 10 on a laptop with Nvidia A200 GPU, and 
+Fig. 2. Design of the proposed methodology.
+E.L.T. Tchokote and E.F. Tagne                                                                                                                                                                                                             Machine Learning with Applications 20 (2025) 100647 
+5 
+
+32GB RAM.
+4.3. Classification results
+In this section, we compare our model to several state-of-the-art 
+models. Table 2 displays the performance of all compared models. We 
+show the results of the ablation study we carried and we also show some 
+examples of memes detected by our model on the test set.
+Quantitative Performance Comparison . Table 3 displays the per -
+formance of all the compared models on the FBHM dataset. It can be 
+observed that our model outperforms the other multimodal-based 
+Fig. 3. Various forms of adversarial attacks on the image supported by our model.
+Table 1 
+Various attack forms for text.
+Attacks on Text Description Output
+Replace 
+Bidirectional
+This involves replacing words/characters 
+with their bidirectional equivalents to 
+affect the model ’ s sensitivity to 
+directionality
+EM DNEFFO 
+SMILSUM
+Replace Similar 
+Chars
+This involves substituting characters 
+with visually similar ones to create 
+adversarial examples that are hard to 
+detect.
+MUZL!MS 
+OFF3ND M3
+Simulate Typos This involves introducing common typos 
+or keyboard errors into the text to test the 
+model ’ s robustness against human-like 
+mistakes
+MUSLIMS 
+OFFEND LME
+Change Case This involves changing the case of letters 
+in the text to affect the model
+MUsLIm OFFEnD 
+mE
+Insert 
+Punctuation 
+Chars
+This involves adding or removing 
+punctuation to alter the meaning/ 
+structure of sentences
+M.U.S.L.I.M.S..O. 
+F.F.E.N.D..M.E..
+Insert White 
+Space Chars
+This involves adding extra spaces to 
+affect how the models parse sentences
+M U S L I M S O F F 
+E N D M E
+Table 2 
+FBHM dataset sizes and label distribution.
+Dataset Size Hateful Memes Non-Hateful memes
+Train 8500 3049 5451
+Test 1000 456 544
+Validation 500 251 249
+Table 3 
+Results of different models on the FBHM dataset.
+Author Model Macro-F1 
+Scores (%)
+Accuracy 
+(%)
+Aggarwal et al., ( Aggarwal et al., 
+2023 )
+RoBERTa-ResNet 
+(Baseline model)
+63.10 N/A
+Aggarwal et al., ( Aggarwal et al., 
+2023 )
+Visual-BERT 60.88 N/A
+Aggarwal et al., ( Aggarwal et al., 
+2023 )
+UNITER 63.53 N/A
+Kiela et al., ( Kiela, Mohan & 
+Firooz, 2020 )
+VilBERT-CC N/A 66.10
+Chhabra et al., ( Chhabra & 
+Vishwakarma, 2023 )
+DistilBERT- 
+SKResNet
+N/A 76.07
+RobRes_adv RoBERTa- 
+ResNet50
+52.56 53.2
+RobRes_adv_iPCA RoBERTa- 
+ResNet50
+56.02 58
+RobRes_adv_SMOTE RoBERTa- 
+ResNet50
+76.75 78
+RobRes_adv_iPCA_SMOTE RoBERTa- 
+ResNet50
+81.53 81.80
+E.L.T. Tchokote and E.F. Tagne                                                                                                                                                                                                             Machine Learning with Applications 20 (2025) 100647 
+6 
+
+networks. It should be noted that we considered adding adversarial 
+examples for both modalities during training and testing. The study by 
+Kiela et al., ( Kiela, Mohan & Firooz, 2020 ) illustrated the difficulty in 
+multimodal classification and they observed that the more advanced 
+fusion, the better the model performs. They included the VilBERT-CC 
+model and it achieved a score of 66.10 %. Aggarwal et al., ( Aggarwal 
+et al., 2023 ) carried out experiments on three multimodal models 
+namely, RoBERTa-ResNet, Visual-BERT, and UNITER without consid -
+ering adversarial training. They added adversarial examples for both 
+modalities on the test set of the FBHM dataset to investigate the 
+robustness of hate meme detection against adversarial examples. The 
+study they performed revealed UNITER as the best model. Chhabra 
+et al., ( Chhabra & Vishwakarma, 2023 ) proposed a multimodal model 
+that uses multi-scale visual kernels and knowledge distillation archi -
+tecture to achieve an impressive 76.07 % on the FBHM dataset.
+Ablation Study . To evaluate the effectiveness of combining SMOTE 
+and Incremental PCA in an adversarial setting, we conducted more ex -
+periments to examine their corresponding performances: 
+Raw_Data . This was designed as the proposed multimodal network 
+without using SMOTE or Incremental PCA on the original dataset. 
+We still added adversarial examples on both input modalities.
+Incremental_PCA . This was created as the proposed multimodal 
+network using incremental PCA to reduce the features and directly 
+pass them on to our model. Still, this was carried out in an adversarial 
+setting.
+SMOTE_PCA . This was created as the proposed multimodal network 
+applying incremental PCA and SMOTE in an adversarial setting.
+Based on the results in Fig. 4 , we can observe that applying SMOTE 
+only has a greater effect on the performance than applying PCA only. It 
+can also be observed that introducing either PCA or SMOTE enhances 
+the performance of our model than without. Overall, combining SMOTE 
+and PCA achieves a better performance than the other methods.
+Qualitative Examples . In Fig. 5 , we present examples of post 
+detected by our multimodal network, we can observe that the model can 
+obtain reliable cues to make accurate predictions based on the contents 
+of the image and the text. As demonstrated in Table 2 , our model ach -
+ieved 81.53 % macro-F1 score on the FBHM dataset. This is still a long 
+way to a perfect performance, so it is worth analyzing the failure case for 
+the future work. For failure cases some posts don ’ t contain explicit hate 
+content, if our model can infer the context relation among posts and the 
+knowledge from human experts, it will improve the model performance.
+Fig. 6 shows some examples of failure cases, the top three memes 
+were detected as hateful and the bottom three memes were detected as 
+not-hateful. It can be observed that cases where the textual and visual 
+elements require nuanced understanding and cultural context are 
+particularly challenging. For instance, our model frequently mislabeled 
+memes that reported sarcasm or irony due to the model ’ s lack of prag -
+matic reasoning. Also, the model is affected by cultural bias and ste -
+reotypes present in the dataset, for example, the meme at row 1, column 
+1 of Fig. 6 was detected as hateful because of our model inability to 
+recognize visual stereotypes.
+5. Conclusions and future works
+In this paper, we highlighted the need to build robust systems to be 
+able to effectively detect hate content online as it has become common 
+to spread hate through images and text on social media and masking the 
+posts to evade online detectors. We tackle this challenge by addressing 
+both data imbalances and model vulnerabilities. We uniquely combine 
+SMOTE, to mitigate class imbalance, with incremental PCA, which offers 
+memory-efficient dimensionality reduction which is critical for handling 
+large, multimodal datasets like the Facebook Hateful Memes (FBHM) 
+dataset. This combination enabled our multimodal model to achieve an 
+accuracy of 81.80 % on the validation set, thereby outperforming 
+existing benchmarks. Beyond accuracy, we acknowledge the ethical 
+imperative of building models that are resilient to adversarial manipu -
+lation. Recognizing that even non-technical attacks can significantly 
+affect the models ’ performance, this work provides a practical approach 
+to fortifying hate post detection in real-world scenarios. We stored the 
+model ’ s prediction on the test set in a JSON file for human-level judg -
+ment and we discussed some predictions it made.
+We noticed that the adoption of incremental PCA proved to be 
+particularly beneficial, offering the scalability and adaptability essential 
+for modern machine learning workflows dealing with ever-growing data 
+streams. To enhance model training by ensuring that both images and 
+text features are appropriately scaled and reduced before further pro -
+cessing, we used incremental PCA as a crucial preprocessing step to 
+enable efficient handling of multimodal data while addressing class 
+Fig. 4. Ablation Study of the Proposed Model.
+E.L.T. Tchokote and E.F. Tagne                                                                                                                                                                                                             Machine Learning with Applications 20 (2025) 100647 
+7 
+
+imbalance through synthetic sample generation (SMOTE).
+In future, we intend to train our model against more severe adver -
+sarial attacks with perturbation norms from l
+0
+, l
+2
+and l
+∞ 
+to make it even 
+more robust, we intend to try more variants of attacks. We equally 
+intend to perform experiments under varying degrees of dataset imbal -
+ance to provide a deeper insight into the robustness of our approach. 
+Also, we intend to use multilingual comments with memes to extract 
+better features.
+Declaration of generative AI and AI-assisted technologies in the 
+writing process
+During the preparation of this work the author(s) used Grammerly in 
+order to improve readability. After using this tool/service, the author(s) 
+reviewed and edited the content as needed and take(s) full responsibility 
+for the content of the publication.
+Author statement
+* Conceptualization: E. L. Tchuindjang Tchokote: Developed the 
+main idea and research questions.
+* Methodology: E. L. Tchuindjang Tchokote: Designed the study and 
+selected appropriate methodologies.
+* Data Collection: E. L. Tchuindjang Tchokote: Conducted experi -
+ments and collected data.
+* Data Analysis: E. L. Tchuindjang Tchokote: Analyzed the data and 
+interpreted results.
+- Elie Fute Tagne: Assisted in statistical analysis and validation of 
+findings.
+* Writing – Original Draft: E. L. Tchuindjang Tchokote: Wrote the 
+initial draft of the manuscript.
+- Elie Fute Tagne: Contributed sections related to literature review 
+and discussion.
+Fig. 5. Examples of posts that were detected successfully by our model.
+E.L.T. Tchokote and E.F. Tagne                                                                                                                                                                                                             Machine Learning with Applications 20 (2025) 100647 
+8 
+
+* Writing – Review & Editing: Elie Fute Tagne: Reviewed and edited 
+the manuscript for clarity and coherence.
+* Supervision: Elie Fute Tagne: Oversaw the project, provided 
+guidance, and ensured compliance with ethical standards.
+Declaration of competing interest
+The authors declare that they have no known competing financial 
+interests or personal relationships that could have appeared to influence 
+the work reported in this paper.
+Data availability
+Data will be made available on request.
+References
+Aggarwal, P., Chawla, P., Das, M., Saha, P., Mathew, B., Zesch, T., & Mukherjee, A. 
+(2023). HateProof: Are hateful meme detection systems really robust?. In ACM Web 
+Conference .
+Alec, R., Jong Wook, K., Chris, H., Aditya, R., Gabriel, G., Sandhini, A., … Ilya, S. (2021). 
+Learning transferable visual models from natural language supervision. In 
+International Conference on Machine Learning .
+Barth, N., Wagner, E., Raab, P., & Wieg ¨artner, B. (2023). Contextures of hate: Towards a 
+systems theory of hate communication on social media platforms. The 
+Communication Review, Tandfonline , 209 – 252 .
+Basgall, M., Hasperue, W., Naiouf, M., & Fernandez, A. (2018). SMOTE-BD: An exact and 
+scalable oversampling method for imbalanced classification in big data. Journal of 
+Computer Science & Technology , 203 – 209 .
+Chhabra, A., & Vishwakarma, D. K. (2023). Multimodal hate speech detection via multi- 
+scale visual kernels and knowledge distillation architecture. Engineering Applications 
+of Artificial Intelligence .
+Gewers, F. L., Ferreira, G. R., Arruda, H. F., Silva, F. N., Comin, C. H., Amancio, D. R., & 
+Costa, L. D. (2021). Principal component analysis . September 10. Association for 
+Computing Machinery. Retrieved December 12, 2024, from Geeks for Geeks http 
+s://www.geeksforgeeks.org/principal-component-analysis-pca/ .
+Hee, M. S., Lee, R. K., & Chong, W. H. (2022). Explaining multimodal hateful meme 
+detection models. In ACM Web Conference .
+Kiela, D., Mohan, A., & Firooz, H. (2020). Hateful Memes Challenge and dataset for research 
+on harmful multimodal content. Retrieved from Meta: https://proceedings.mlr.press/ 
+v133/kiela21a/kiela21a.pdf .
+Mohammed, A., Hassan, M., & Kadir, D. (2020). IMproving CLassification performance 
+for a novel imbalanced medical dataset using SMOTE method. International Journal 
+of Advanced Trends in Computer Engineering , 3161 – 3172 .
+Mulla, G. A., Demir, Y., & Hassan, M. M. (2021). Combination of PCA with SMOTE 
+oversampling for classifcation of high-dimensional imbalanced data. BEU Journal of 
+Science .
+Price, R. (2020). Facebook Created > 10,000 ’ Hateful Memes ’ to Help Researchers Learn 
+How to Spot Hate Speech . May 12. Business Insider. Retrieved December 21, 2024, 
+from https://www.businessinsider.com/facebook-hateful-memes-dataset-hate-spee 
+ch-researchers-2020-5 .
+Singh, K., Vajrobol, V., & Aggarwal, N. (2023). Multimodal hate speech event detection 
+2023: Detection of hate speech and targets using Xlm-Roberta-base. In Proceedings of 
+the 6th Workshop on Challenges and Applications of Automated Extraction of Socio- 
+political Events from Text (pp. 136 – 143). INCOMA Ltf., Shoumen, Bulgaria . 
+Surani, M., Domaratzki, M., & Saman, M. (2024). Enhancing SMOTE for imbalanced data 
+with abnormal minority instances. Machine Learning with Applications .
+Tran, T., Hu, Y., Hu, C., Yen, K., Tan, F., Lee, K., & Park, S. (2020). HABERTOR: An 
+efficient and effective deep hatespeech detector. In Proceedings of the 2020 
+Conference on Empirical Methods in Natural Language Processing (EMNLP) .
+Wang, W., Wang, R., Ke, J., & Wang, L. (2021). TextFirewall: Omni-defending against 
+adversarial texts in sentiment classification. IEEE access: Practical Innovations, Open 
+Solutions , 27467 – 27475 .
+Waqas, A., Salminen, J., Jung, S., Almerekhi, H., & Jansen, B. J. M (2019). Mapping 
+online hate: A scientometric analysis on research trends and hotspots in research on 
+online hate. PLoS One .
+Fig. 6. Failure cases examples.
+E.L.T. Tchokote and E.F. Tagne                                                                                                                                                                                                             Machine Learning with Applications 20 (2025) 100647 
+9 

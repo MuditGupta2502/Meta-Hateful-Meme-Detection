@@ -1,0 +1,953 @@
+\documentclass[11pt,a4paper]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,longtable,array}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{tcolorbox}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+  pdftitle={Deep Guide to Notebooks 00-04},
+  pdfauthor={GitHub Copilot}
+}
+
+\setstretch{1.15}
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0pt}
+\setlength{\headheight}{14pt}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Hateful Meme Project}
+\fancyhead[R]{Notebooks 00--04 Guide}
+\fancyfoot[C]{\thepage}
+
+\titleformat{\chapter}[display]
+  {\bfseries\Huge}
+  {\filright\Large Chapter \thechapter}
+  {1ex}
+  {\titlerule\vspace{1ex}\filleft}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false
+}
+
+\newtcolorbox{keyidea}{
+  colback=blue!4,
+  colframe=blue!45!black,
+  boxrule=0.7pt,
+  arc=2pt,
+  left=6pt,
+  right=6pt,
+  top=6pt,
+  bottom=6pt
+}
+
+\newtcolorbox{warningbox}{
+  colback=red!3,
+  colframe=red!55!black,
+  boxrule=0.7pt,
+  arc=2pt,
+  left=6pt,
+  right=6pt,
+  top=6pt,
+  bottom=6pt
+}
+
+\begin{document}
+
+\begin{titlepage}
+\centering
+{\Huge Deep Guide to Notebooks 00--04 \par}
+\vspace{0.8cm}
+{\Large Hateful Meme Detection Project \par}
+\vspace{0.6cm}
+{\large From prerequisites to OCR pipeline \par}
+\vfill
+\begin{tabular}{rl}
+Project:& hateful-meme-project \\
+Scope:& notebooks 00\_setup through 04\_ocr\_pipeline \\
+Focus:& prerequisites, rationale, code walkthrough, interpretation \\
+Prepared:& April 7, 2026
+\end{tabular}
+\vfill
+\begin{keyidea}
+This document is written for a reader starting from scratch. It explains the conceptual background, the Python and machine learning prerequisites, the dataset conventions, and then the purpose and internal logic of notebooks 00, 01, 02, 03, and 04 in detail.
+\end{keyidea}
+\end{titlepage}
+
+\tableofcontents
+
+\chapter{How to Read This Project From Scratch}
+
+This project studies hateful meme detection as a \textbf{multimodal classification} problem. A meme is not just an image and not just text. Meaning often arises from the interaction between the visual content and the overlaid caption. Because of that, the project is structured as a pipeline of notebooks that move from environment validation to problem definition, then data inspection, deeper exploratory analysis, and finally OCR quality analysis.
+
+The five notebooks covered here are:
+
+\begin{enumerate}[label=\arabic*.]
+\item \texttt{00\_setup.ipynb}: environment and data sanity checking.
+\item \texttt{01\_problem-scope.ipynb}: task definition and design decisions.
+\item \texttt{02\_data-inspection.ipynb}: raw dataset loading and validation.
+\item \texttt{03\_eda.ipynb}: exploratory data analysis of language and image-related metadata.
+\item \texttt{04\_ocr\_pipeline.ipynb}: audit of text extraction quality and OCR fallback strategy.
+\end{enumerate}
+
+There is one subtle but important detail: the overview table inside notebook 00 appears to come from an older naming scheme. The current workspace contains notebooks named \texttt{01\_problem-scope}, \texttt{02\_data-inspection}, \texttt{03\_eda}, and \texttt{04\_ocr\_pipeline}. That mismatch is not a conceptual problem, but it is useful to know when reading the notebooks.
+
+\section{What Problem Is This Project Solving?}
+
+The target task is binary classification:
+
+\[
+f(x_{image}, x_{text}) \rightarrow y \in \{0, 1\}
+\]
+
+where:
+
+\begin{itemize}
+\item $x_{image}$ is the meme image,
+\item $x_{text}$ is the associated meme text,
+\item $y = 1$ means hateful,
+\item $y = 0$ means non-hateful.
+\end{itemize}
+
+This looks simple on paper, but it is difficult in practice because hateful meaning is frequently \textbf{contextual}. An image alone may seem harmless. The text alone may also seem mild. Yet when combined, the pair becomes hateful. A good model therefore needs to learn not only image features and text features, but also cross-modal interactions.
+
+\section{Why Not Just Use Text-Only or Image-Only Models?}
+
+If the problem were only text classification, then a standard NLP pipeline such as TF-IDF with logistic regression or a transformer encoder might be enough. If it were only image classification, a CNN or vision transformer could suffice. Hateful memes are harder because the label depends on joint interpretation.
+
+Suppose one meme shows a neutral image and a hateful caption. Another shows a visually offensive stereotype but a benign or sarcastic caption that changes the meaning. The project explicitly treats these cases as evidence that a simple unimodal system is not enough. That is why later notebooks move toward CLIP-based multimodal fusion.
+
+\chapter{Prerequisites}
+
+This chapter explains the minimum background a student needs before the notebooks will make full sense.
+
+\section{Python and Notebook Basics}
+
+The notebooks are written in Python and assume comfort with:
+
+\begin{itemize}
+\item importing modules,
+\item working with paths via \texttt{pathlib.Path},
+\item reading JSON Lines files,
+\item using \texttt{pandas} DataFrames,
+\item plotting with \texttt{matplotlib},
+\item understanding the difference between CPU and GPU execution.
+\end{itemize}
+
+If any of those are unfamiliar, here is the minimum practical understanding:
+
+\begin{itemize}
+\item A \texttt{.ipynb} notebook is an interactive document with \textbf{code cells} and \textbf{markdown cells}.
+\item \texttt{Path} objects make file-system logic safer than manual string concatenation.
+\item A JSONL file stores one JSON object per line. It is common for machine learning datasets because it streams well and is easy to parse.
+\item A DataFrame is a table-like structure where each row is one sample and each column is one field.
+\end{itemize}
+
+\section{Machine Learning Prerequisites}
+
+These notebooks do not start training yet, but they already assume familiarity with a few ML ideas:
+
+\begin{itemize}
+\item \textbf{Train/dev/test split}: training data fits the model, dev data tunes decisions, test data estimates final generalization.
+\item \textbf{Class imbalance}: when one label appears more often than the other, naive accuracy can be misleading.
+\item \textbf{Feature extraction}: encoders turn raw images and raw text into vectors.
+\item \textbf{Metrics}: AUROC, F1, and accuracy capture different aspects of model behavior.
+\end{itemize}
+
+For binary classification, the model outputs either a score or probability for the positive class. A threshold then maps that score to class 0 or 1. AUROC is useful because it measures ranking quality across all thresholds, not just one.
+
+\section{Deep Learning Prerequisites}
+
+The requirements file lists the main libraries:
+
+\begin{itemize}
+\item \texttt{torch}, \texttt{torchvision}, \texttt{torchaudio}
+\item \texttt{transformers}, \texttt{accelerate}, \texttt{sentencepiece}
+\item \texttt{numpy}, \texttt{pandas}, \texttt{scikit-learn}, \texttt{tqdm}
+\item \texttt{Pillow}, \texttt{matplotlib}, \texttt{seaborn}, \texttt{pyyaml}
+\item \texttt{ipykernel}, \texttt{jupyter}
+\end{itemize}
+
+However, the notebooks themselves also use a few packages that are not emphasized in \texttt{requirements.txt}:
+
+\begin{itemize}
+\item \texttt{wordcloud} in notebook 03,
+\item \texttt{gradio} in notebook 00 package checks,
+\item \texttt{ipywidgets} in notebook 00 package checks,
+\item \texttt{scipy} for a Mann-Whitney test in notebook 03,
+\item \texttt{easyocr} in notebook 04.
+\end{itemize}
+
+So if a reader wants the notebooks to run completely from scratch, the operational prerequisite is broader than the base requirements file suggests.
+
+\begin{warningbox}
+Practical prerequisite: the setup notebook can install some missing packages dynamically, but a reproducible project usually benefits from pinning all notebook dependencies in one place. That matters especially for \texttt{easyocr}, \texttt{wordcloud}, and \texttt{scipy}.
+\end{warningbox}
+
+\section{Dataset Prerequisites}
+
+The project expects the Meta Hateful Memes dataset in a folder structure that contains:
+
+\begin{itemize}
+\item \texttt{train.jsonl}
+\item \texttt{dev.jsonl}
+\item \texttt{test.jsonl}
+\item an image directory named \texttt{img/} or \texttt{images/}
+\end{itemize}
+
+Each JSONL line is a meme sample with fields such as:
+
+\begin{lstlisting}
+{
+  "id": 12345,
+  "img": "img/12345.png",
+  "label": 1,
+  "text": "some meme text"
+}
+\end{lstlisting}
+
+This means the project treats the dataset not as an opaque blob, but as a structured collection where image references and text annotations must agree.
+
+\section{Why OCR Matters at All}
+
+Many meme datasets need OCR because the image itself contains the text. In this project, the dataset already ships with a \texttt{text} field that is described as human-cleaned OCR. Notebook 04 still checks OCR quality because:
+
+\begin{itemize}
+\item the text field could be incomplete,
+\item OCR errors can distort label-relevant cues,
+\item downstream preprocessing depends heavily on text quality.
+\end{itemize}
+
+So OCR in this project is not the primary source of text by default. It is an audit and fallback mechanism.
+
+\chapter{Notebook 00: Environment Setup and Project Verification}
+
+Notebook 00 is the operational gatekeeper for the rest of the project. It is meant to be run before other notebooks and answers a simple question: \textbf{is the environment sane enough to trust later results?}
+
+\section{High-Level Goal}
+
+The notebook verifies:
+
+\begin{itemize}
+\item the project root,
+\item the Python interpreter and platform,
+\item GPU availability,
+\item required packages,
+\item presence of dataset files,
+\item existence of image files,
+\item the ability to import source modules,
+\item optional config and checkpoint files.
+\end{itemize}
+
+This may look mundane, but it is one of the most important engineering steps in the pipeline. Many machine learning notebooks fail not because the model is wrong, but because the runtime path, package versions, or dataset mount is wrong.
+
+\section{Cell Group 1: Dataset Path Detection}
+
+The first major code cell defines a robust data-directory discovery routine. It checks whether the code is running on Kaggle, supports explicit environment variable overrides, and searches recursively under \texttt{/kaggle/input} when necessary.
+
+The logic is effectively:
+
+\[
+\text{DATA\_DIR} = \text{best available folder containing train JSONL and an image directory}
+\]
+
+This is good engineering for notebook portability. The same notebook may run:
+
+\begin{itemize}
+\item on a local Windows machine,
+\item in a Kaggle notebook,
+\item from a repo root,
+\item or from inside a notebook subfolder.
+\end{itemize}
+
+Instead of hard-coding one path, the notebook infers the dataset root by checking simple invariants: a dataset folder must contain images and at least the train split.
+
+\section{Cell Group 2: Reproducibility Seeding}
+
+The next cell sets seeds for Python's \texttt{random}, NumPy, and PyTorch. This addresses reproducibility. Without this step, random sampling, shuffling, or model initialization can vary between runs.
+
+Conceptually, the notebook tries to reduce variance in any process that depends on pseudo-random number generation:
+
+\[
+\text{seed} = 42 \Rightarrow \text{repeatable sampling and initialization behavior}
+\]
+
+This does not guarantee bit-for-bit reproducibility in every GPU context, but it is the correct baseline practice.
+
+\section{Cell Group 3: Project Root Detection}
+
+The notebook then tries to detect the repository root by checking whether \texttt{src/}, \texttt{configs/}, or \texttt{config/} directories exist. This matters because notebook execution often begins in a subdirectory rather than at the repository root.
+
+The code inserts the root into \texttt{sys.path} and changes the working directory there. That is what allows later import statements like \texttt{src.datasets.meme\_dataset} to work.
+
+This pattern is common in research repositories. It is not elegant in a packaged Python-library sense, but it is pragmatic for notebook-based workflows.
+
+\section{Cell Group 4: Device Check}
+
+This cell checks the PyTorch version, CUDA availability, GPU count, and GPU memory. The purpose is not only convenience. It determines what later notebooks can realistically do.
+
+If training later uses CLIP embeddings or multimodal fusion, GPU acceleration can change runtime from hours to minutes. The notebook also defines:
+
+\[
+\text{DEVICE} =
+\begin{cases}
+\texttt{cuda} & \text{if a CUDA GPU exists} \\
+\texttt{cpu} & \text{otherwise}
+\end{cases}
+\]
+
+This is standard PyTorch practice.
+
+\section{Cell Group 5: Package Verification}
+
+The setup notebook checks imports for a list of modules and attempts \texttt{pip install} for anything missing. The package list includes core ML libraries plus interactive notebook packages and demo-related dependencies.
+
+This is helpful for convenience, but it also reveals the real dependency footprint of the project. From a learning perspective, this cell teaches two things:
+
+\begin{enumerate}[label=\arabic*.]
+\item notebooks are executable environments, not just documents,
+\item reproducibility depends on package management as much as on code correctness.
+\end{enumerate}
+
+\section{Cell Group 6: Dataset File Verification}
+
+The setup notebook validates the presence of train, dev, and test JSONL files and checks whether the image directory exists. It also counts how many non-empty lines are present in each split file.
+
+For this workspace, direct dataset extraction confirms the expected split sizes:
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+Split & Samples & Notes \\
+\midrule
+Train & 8,500 & labeled \\
+Dev & 500 & labeled \\
+Test & 1,000 & evaluation split present in workspace \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The notebook also checks that the image directory is populated. In the local data snapshot used for this report, all 10,000 image references were present and no corrupted images were found.
+
+\section{Cell Group 7: Load One Sample}
+
+One of the most pedagogically useful steps in notebook 00 is the quick sample visualization. It loads the first non-empty record in the train file, resolves the referenced image path, prints the label and text, and displays the image.
+
+This is a classic sanity check in multimodal projects because it validates all of the following at once:
+
+\begin{itemize}
+\item JSON parsing works,
+\item image path resolution works,
+\item the label field exists,
+\item the text field exists,
+\item the image can actually be rendered.
+\end{itemize}
+
+This is much better than only checking file existence. A file can exist and still be semantically unusable.
+
+\section{Cell Group 8: Source Module Import Check}
+
+The notebook tries to import classes from \texttt{src.datasets.meme\_dataset} and \texttt{src.models.clip\_encoder}. That tells the reader the broader repository is intended to include custom dataset and encoder abstractions, not only ad hoc notebook code.
+
+If this cell fails, the problem is usually one of three things:
+
+\begin{itemize}
+\item the repo root was not detected correctly,
+\item the \texttt{src/} folder is missing,
+\item or the codebase is only partially present.
+\end{itemize}
+
+\section{Cell Group 9: Config and Checkpoint Verification}
+
+The last setup cells look for configuration files and saved \texttt{.pt} checkpoints. These checks are optional, but they are helpful because they answer whether the project is in a fresh state or a partially trained state.
+
+\section{What Notebook 00 Teaches}
+
+The setup notebook is not teaching modeling directly. It is teaching \textbf{runtime hygiene}. A student reading it carefully should come away with these lessons:
+
+\begin{itemize}
+\item do not trust a notebook until paths, packages, and files are validated,
+\item make notebooks portable across environments,
+\item check one real sample before running large experiments,
+\item treat import failures as environment problems first, not as model problems.
+\end{itemize}
+
+\chapter{Notebook 01: Problem Scope and Design Decisions}
+
+Notebook 01 is mostly conceptual. That is good design. Before building a model, the project explicitly defines what it is trying to solve, what it is \emph{not} trying to solve, what success means, and why a particular architecture family was chosen.
+
+\section{Task Definition}
+
+The notebook defines the problem as binary multimodal classification: hateful vs non-hateful. It also explains why the project does not immediately attempt a multi-class taxonomy such as sarcasm, offensiveness, or implicit hate.
+
+The reason is sound: the dataset does not natively provide that richer annotation scheme. So the project chooses a tractable supervised objective first.
+
+This is good scientific scoping. A model can only learn the distinctions the labels support.
+
+\section{Scope Boundary}
+
+The notebook says the project focuses on:
+
+\begin{itemize}
+\item overt hate speech in memes,
+\item hate that requires both image and text to identify,
+\item not general offensiveness or unrelated sarcasm.
+\end{itemize}
+
+This boundary matters. Without it, readers may over-claim what the system can do. In responsible AI work, that is dangerous. A model trained for one moderation task should not be casually marketed as solving all abuse-detection tasks.
+
+\section{Dataset Description}
+
+Notebook 01 summarizes the Meta AI Hateful Memes Challenge dataset and emphasizes a crucial point: it contains \textbf{confounder-style construction}. That means the same or similar visual contexts can pair with different captions and different labels.
+
+The conceptual lesson is that the dataset is intentionally designed to punish shallow shortcuts. If a model learns only stereotypical image features or only toxic keywords, it should fail on hard examples.
+
+\section{Success Metrics}
+
+The notebook lists AUROC as the primary metric and also tracks Macro F1, hateful-class F1, and accuracy.
+
+This is the correct ranking of priorities for moderation-style systems. AUROC matters because threshold selection may change by deployment context. If an application wants aggressive filtering, it may operate at a different threshold than a system that wants fewer false positives.
+
+In notation, if a model produces a score $s(x)$ and a threshold $\tau$, then:
+
+\[
+\hat{y} = \mathbb{1}[s(x) \geq \tau]
+\]
+
+Accuracy depends on a specific choice of $\tau$. AUROC does not.
+
+\section{Architecture Decisions}
+
+This notebook makes one of the project's most important design commitments: use CLIP-based image and text encoders plus cross-attention fusion.
+
+The reasoning is coherent:
+
+\begin{itemize}
+\item CLIP already aligns images and text in a shared representation space.
+\item A separate text encoder is unnecessary if CLIP's text encoder is strong enough.
+\item Cross-attention is preferred over naive concatenation because it can model token-level or feature-level interaction between modalities.
+\item Frozen encoders reduce compute cost and lower the risk of catastrophic forgetting under limited GPU budget.
+\end{itemize}
+
+The notebook also states a baseline ladder. This is not just engineering convenience. It is a scientific control structure. The project wants to show that each increase in multimodal sophistication adds value over simpler baselines.
+
+\section{Imbalance Handling}
+
+The notebook proposes weighted random sampling and focal loss. These choices respond to class imbalance and hard-example concentration.
+
+If $p_t$ is the predicted probability assigned to the true class, focal loss is often written as:
+
+\[
+\mathcal{L}_{focal} = -\alpha (1-p_t)^{\gamma} \log(p_t)
+\]
+
+The term $(1-p_t)^{\gamma}$ suppresses easy examples and emphasizes hard ones. This is especially useful when a dataset contains many easy negatives but a smaller number of subtle or ambiguous positives.
+
+\section{Responsible AI Layer}
+
+Notebook 01 is also where the project commits to explainability, counterfactuals, fairness-style subgroup evaluation, calibration, and human-in-the-loop routing.
+
+This is significant because it moves the project beyond pure benchmark chasing. The goal is not merely to get one score. The goal is to build a moderation-oriented system that can be inspected, challenged, and escalated to a human when appropriate.
+
+\section{Deliverables Framing}
+
+The notebook lists concrete deliverables such as a research prototype, explainability components, counterfactual analysis, a web demo, a backend API, an audit log, and an error analysis report.
+
+That turns the project from a single notebook experiment into an end-to-end system design. For a student, this is a useful reminder that real ML work usually spans data validation, modeling, interpretability, deployment surfaces, and auditability.
+
+\section{Final Sanity Check Cell}
+
+Notebook 01 ends with a compact code cell that re-detects the dataset path and prints one sample schema. This is a deliberate pattern throughout the project: each notebook is able to run independently rather than depending on hidden state from a previous notebook.
+
+That design choice improves robustness and makes each notebook easier to grade, debug, and re-run in isolation.
+
+\chapter{Notebook 02: Data Inspection and Verification}
+
+Notebook 02 moves from conceptual planning to empirical validation of the raw data. It asks: what exactly is in the dataset we are about to model?
+
+\section{Why Data Inspection Comes Before EDA}
+
+Data inspection is narrower than EDA. Inspection checks integrity and structure. EDA asks broader analytical questions. That separation is healthy. Before interpreting patterns, we should first establish that the data loads correctly and is internally consistent.
+
+\section{Loading the Splits}
+
+The notebook repeats the robust dataset detection logic, then loads train, dev, and test JSONL files into DataFrames. This repetition may seem redundant, but it supports notebook independence.
+
+From the workspace snapshot used for this report, the dataset sizes are:
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+Split & Count & Interpretation \\
+\midrule
+Train & 8,500 & model fitting split \\
+Dev & 500 & tuning and validation split \\
+Test & 1,000 & held-out evaluation data present in workspace \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Image Path Resolution}
+
+The helper function in notebook 02 is more sophisticated than a simple \texttt{os.path.join}. It tries multiple candidate layouts because image paths may be stored with or without \texttt{img/} prefixes and may differ between local and Kaggle setups.
+
+That matters because dataset portability problems often emerge from tiny path-format inconsistencies. The helper explicitly encodes those variants rather than assuming one canonical layout.
+
+\section{Class Balance Check}
+
+The notebook prints per-class counts for the train and dev sets. In this dataset snapshot:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Split & Non-hateful & Hateful & Comment \\
+\midrule
+Train & 5,450 & 3,050 & moderate imbalance \\
+Dev & 250 & 250 & perfectly balanced \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The train split therefore has a non-hateful to hateful ratio of approximately:
+
+\[
+\frac{5450}{3050} \approx 1.79:1
+\]
+
+That imbalance is not extreme, but it is large enough that loss weighting, focal loss, or balanced sampling are reasonable design responses.
+
+\section{Image Existence and Corruption Check}
+
+The notebook iterates through all samples and verifies that the referenced image exists and is readable. This is vital because image-text tasks depend on both modalities being present.
+
+For the local dataset used here:
+
+\begin{itemize}
+\item missing images: 0
+\item corrupted images: 0
+\item total samples checked: 10,000
+\end{itemize}
+
+This is a strong sign that the project data bundle is internally consistent at the file level.
+
+\section{Duplicate and Leakage Checks}
+
+Notebook 02 hashes image files and text strings to estimate duplicates and train-dev overlap. This is one of the most important quality-control steps because leakage can make a model appear stronger than it really is.
+
+In the train split, a direct hash-based pass found 1,428 duplicated text strings. That does not automatically mean label leakage, but it does mean the text distribution contains repetition. Such repetition can encourage lexical shortcut learning.
+
+The notebook also contains logic to check overlapping image hashes between train and dev. This is precisely the kind of integrity check that should happen before benchmarking any model.
+
+\section{Missing or Empty Text Fields}
+
+The notebook checks for null and empty text fields in every split. In the local snapshot used for this report, all three splits had zero null text entries and zero empty text entries.
+
+That result supports the notebook 04 decision to treat the dataset OCR text as generally reliable.
+
+\section{Random Sample Inspection}
+
+The notebook displays random hateful and non-hateful examples. This is not merely for presentation value. Human inspection helps answer questions that simple statistics cannot:
+
+\begin{itemize}
+\item does the label distribution feel plausible,
+\item do some samples look ambiguous,
+\item are there obvious annotation artifacts,
+\item does the hateful class visibly require multimodal reasoning.
+\end{itemize}
+
+If a student skips this step, they often miss the semantic difficulty of the problem.
+
+\section{Image Resolution Analysis}
+
+Notebook 02 samples image sizes and plots width and height distributions. On a sample of 200 training images extracted directly from the workspace data, the observed summary was:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Quantity & Min & Max & Mean \\
+\midrule
+Width & 247 & 825 & 608.59 \\
+Height & 309 & 804 & 527.03 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+This tells the reader that image sizes are moderately variable but not wildly unconstrained. That matters when later deciding on resize policies, CLIP input resolution, and augmentation settings.
+
+\section{Modality-Need Analysis}
+
+The notebook computes text length and explores whether very short texts may be image-reliant and longer texts may be text-dominant. This is a simple heuristic, but it is conceptually useful.
+
+From the local train split:
+
+\begin{itemize}
+\item mean word count overall: 11.74
+\item mean word count for non-hateful: 11.15
+\item mean word count for hateful: 12.79
+\item median word count: 10
+\item 95th percentile word count: 24
+\item mean character count overall: 62.08
+\end{itemize}
+
+These values support a practical conclusion: meme text is usually short enough that OCR quality and token-level signal matter a lot.
+
+\section{What Notebook 02 Teaches}
+
+This notebook teaches the difference between \textbf{having data} and \textbf{trusting data}. A good machine learning workflow does not jump from files on disk straight to model training. It verifies class balance, file consistency, possible duplicates, and the general shape of both modalities.
+
+\chapter{Notebook 03: Exploratory Data Analysis}
+
+Notebook 03 is the broad analytical notebook. Its goal is not just to verify the data exists, but to learn how the data behaves. It explores label balance, text lengths, lexical patterns, duplication, surface forms, demographic mentions, and confounder-like structure.
+
+\section{Why EDA Matters Here}
+
+In multimodal hate detection, poor EDA can lead to poor modeling decisions. For example:
+
+\begin{itemize}
+\item If hateful texts are much longer, the model might exploit length as a shortcut.
+\item If certain identity words dominate the hateful class, the model may over-associate mentions of protected groups with hate.
+\item If exact text duplicates exist, train performance can be inflated.
+\item If image reuse exists, the image encoder may memorize content patterns rather than reasoning compositionally.
+\end{itemize}
+
+Notebook 03 tries to surface these possibilities.
+
+\section{Class Distribution}
+
+The notebook begins with bar and pie plots for train-label distribution. This is partly redundant with notebook 02, but useful in EDA because it visually frames later analyses.
+
+The train split imbalance ratio is about $1.79:1$ in favor of the non-hateful class. That means any naive classifier that leans too hard toward the majority class can still look deceptively reasonable on accuracy.
+
+\section{Text Length Distributions}
+
+The notebook computes word count and character count for each sample and compares the two classes. These are simple features, but they often reveal shortcut risks.
+
+A key insight from the current dataset snapshot is:
+
+\[
+\text{mean word count}_{hate} > \text{mean word count}_{nonhate}
+\]
+
+Numerically:
+
+\[
+12.79 > 11.15
+\]
+
+That gap is not huge, but it is real enough that a careless model might partially exploit it. The notebook later strengthens this analysis by using the Mann-Whitney U test to check whether such differences are statistically significant.
+
+\section{Detailed Text Statistics}
+
+Notebook 03 goes beyond simple means. It computes medians, standard deviations, quantiles, and average word length. This is useful because hateful-meme text is not normally distributed, and means alone can hide skewness.
+
+For example, the 95th percentile word count of 24 suggests most memes are textually brief. This supports later design choices such as transformer-based text encoding with short token sequences.
+
+\section{Violin Plots and Statistical Testing}
+
+The notebook compares distributions with violin plots and runs a Mann-Whitney U test. This is a nonparametric test, which is appropriate when normality assumptions may not hold.
+
+The core question is whether the observed class differences in features such as word count or character count are likely due to random fluctuation or reflect a real distributional shift.
+
+That shift matters because if basic text-shape features already separate the classes somewhat, then a model may learn shallow heuristics unless the evaluation and architecture force it to use richer cross-modal evidence.
+
+\section{Vocabulary Richness}
+
+Notebook 03 computes counts such as total tokens, unique words, type-token ratio, and hapax legomena. These measures help estimate how repetitive or diverse the language is.
+
+If one class has a much lower type-token ratio, it may indicate more repetitive formulaic phrasing. If hateful memes repeatedly use a narrow vocabulary, a text-only classifier may perform surprisingly well on obvious cases while still failing on nuanced multimodal cases.
+
+\section{Zipf-Law Visualization}
+
+The notebook plots ranked word frequencies on log-log axes. This is a standard NLP sanity check because natural language typically follows an approximate Zipfian pattern: a few words occur often, many words occur rarely.
+
+This does not solve a problem directly, but it helps verify that the token distribution looks language-like rather than corrupted or pathologically preprocessed.
+
+\section{Bigram and Trigram Analysis}
+
+The n-gram section extracts common bigrams and trigrams after removing basic stopwords. This is a useful middle ground between individual word counts and full semantic modeling.
+
+Single words can be misleading. Phrases are often more revealing. For moderation tasks, harmful meaning is frequently phrase-based rather than token-based.
+
+For example, identity words alone do not imply hate. Certain multi-word combinations do.
+
+\section{Surface Characteristics}
+
+The notebook measures uppercase ratio, punctuation count, question marks, exclamation marks, digit count, and all-caps frequency. These are weak features individually, but together they help profile the rhetorical style of the corpus.
+
+This kind of analysis is useful for two reasons:
+
+\begin{enumerate}[label=\arabic*.]
+\item it can reveal easy spurious cues,
+\item it can inform preprocessing choices such as whether to preserve case and punctuation.
+\end{enumerate}
+
+If hateful examples rely disproportionately on all-caps shouting or repeated punctuation, a text model may exploit that without understanding semantics.
+
+\section{Text Duplication and Overlap}
+
+One of the strongest parts of notebook 03 is its explicit duplication analysis. It counts exact duplicate texts, cross-label duplicates, train-dev text overlap, and image reuse.
+
+This is not just housekeeping. It goes directly to the credibility of any later reported model score.
+
+When the same text appears multiple times, two kinds of risk emerge:
+
+\begin{itemize}
+\item overfitting to repeated textual patterns,
+\item accidental leakage if similar items span train and validation splits.
+\end{itemize}
+
+The notebook also warns about cross-label duplicates, which can indicate label noise or genuinely context-dependent multimodal cases.
+
+\section{Word Frequencies and Word Clouds}
+
+The notebook includes top-word charts and word clouds for each class. These visualizations are easy to read but easy to misuse. A careful reading should keep two constraints in mind:
+
+\begin{itemize}
+\item frequent words are not necessarily causal features,
+\item identity terms can appear in both benign and hateful contexts.
+\end{itemize}
+
+So the right use of these plots is diagnostic, not normative. They show what the corpus contains; they do not justify simplistic decision rules.
+
+\section{Demographic Mention Analysis}
+
+Notebook 03 defines hand-crafted keyword lists for groups such as race, gender, religion, disability, and sexuality, then measures mention rates by label. This is a rough but useful fairness-oriented probe.
+
+The idea is not to declare bias from one chart. The idea is to discover whether certain protected-group terms are heavily entangled with label assignment, which later informs auditing and calibration.
+
+This is especially important in moderation systems because false positives involving identity mentions are ethically and practically costly.
+
+\section{Confounder Check}
+
+The notebook checks whether the same image appears with both labels, treating such cases as confounder evidence. Conceptually, that is a smart test: if the same image is reused with different texts and different labels, the dataset directly demonstrates that image-only reasoning is insufficient.
+
+In the direct workspace-level extraction used while preparing this report, no such same-image two-label cases were found within the train split. That does not invalidate the notebook's intent. It simply means the local snapshot or the exact split being checked may not surface those cases in the way the markdown discussion anticipates.
+
+This is a good lesson in itself: EDA code often encodes a hypothesis that should be checked, not assumed.
+
+\section{What Notebook 03 Teaches}
+
+Notebook 03 teaches a mature ML habit: before choosing a model, understand the signal landscape and the shortcut landscape. It helps the reader see:
+
+\begin{itemize}
+\item how separable the classes may already be from shallow lexical features,
+\item where duplication or leakage might live,
+\item why fairness and confounding must be part of analysis,
+\item why multimodal reasoning remains necessary even when text statistics are informative.
+\end{itemize}
+
+\chapter{Notebook 04: OCR Pipeline}
+
+Notebook 04 answers a pragmatic question: should the project trust the dataset's provided text field, replace it with OCR, or combine both?
+
+\section{The Core Tension}
+
+The Meta Hateful Memes dataset already provides a text field described as human-cleaned OCR. That is usually better than running OCR blindly yourself. But the notebook still audits OCR quality because some examples may be too short, suspicious, or incomplete.
+
+The notebook therefore does not start from the assumption that OCR is always necessary. It starts from the assumption that OCR quality should be verified empirically.
+
+\section{Step 1: Audit Existing Text Quality}
+
+The notebook computes simple diagnostics:
+
+\begin{itemize}
+\item whether text exists,
+\item whether text is very short,
+\item whether it contains numbers,
+\item whether it contains unusual characters,
+\item average word count,
+\item average character count.
+\end{itemize}
+
+For the local train split used in this report, the extracted audit values were:
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Statistic & Value \\
+\midrule
+Samples with non-empty text & 8,500 \\
+Very short text ($\leq 2$ words) & 153 \\
+Contains numbers & 0 \\
+Contains special characters & 1,010 \\
+Average word count & 11.74 \\
+Average character count & 62.08 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+These numbers strongly support the claim that the provided text field is generally populated and useful.
+
+\section{Step 2: Inspect Suspiciously Short Entries}
+
+The notebook samples memes with one word or less in the OCR text. This is smart because averages can hide edge cases. If the text field fails, it is more likely to fail on these short or empty cases than on normal cases.
+
+\section{Step 3: Install and Initialize EasyOCR}
+
+Notebook 04 conditionally installs \texttt{easyocr}, checks whether CUDA is available, and initializes an English OCR reader.
+
+This is the first notebook in the sequence that introduces a heavier external dependency at runtime. It also reveals an engineering tradeoff:
+
+\begin{itemize}
+\item OCR can improve coverage,
+\item but OCR is computationally expensive,
+\item and the provided dataset text may already be better than raw OCR output.
+\end{itemize}
+
+\section{Step 4: Compare Dataset Text With EasyOCR on a Sample}
+
+The notebook runs EasyOCR on 20 sampled images and stores both the dataset text and OCR output. It cleans OCR text by collapsing whitespace and then computes a simple overlap score.
+
+The overlap score is heuristic rather than rigorous, but that is acceptable for the notebook's stated goal. It is not trying to publish a new OCR benchmark. It is trying to decide whether OCR replacement is worth the cost.
+
+\section{Step 5: OCR Quality Heuristic}
+
+The overlap function is based on word-set intersection. If the dataset text and EasyOCR text share many words, then the existing text field is likely already adequate.
+
+This approach is deliberately simple. It does not account for semantic equivalence, word order, or partial recognitions. But as a quick diagnostic, it is enough to support an engineering decision.
+
+\section{Step 6: Final Decision Logic}
+
+The notebook's conclusion is conservative and sensible:
+
+\begin{itemize}
+\item use the dataset \texttt{text} field as the primary source,
+\item use EasyOCR only as a fallback when the dataset text is too short or missing,
+\item otherwise avoid a full re-OCR pass.
+\end{itemize}
+
+The helper function \texttt{get\_best\_text} encodes exactly that policy. It prioritizes the existing dataset text if it has at least a minimum number of words, falls back to EasyOCR if needed, and otherwise returns whichever source is longer.
+
+This is a practical decision rule for downstream preprocessing because it balances quality, compute cost, and reproducibility.
+
+\section{Step 7: Optional Full OCR Pass}
+
+The notebook includes a disabled branch for running EasyOCR over all splits and writing an \texttt{enhanced\_text} field to disk. This is useful for experimentation but intentionally off by default because it can take 20 to 30 minutes on a T4 GPU.
+
+That is a good example of notebook design. Expensive steps are available, but not silently triggered.
+
+\section{Step 8: Visual Overlay Output}
+
+The final notebook cell displays sampled images with OCR text overlays and label coloring. This is pedagogically valuable because it reconnects the OCR audit to actual memes rather than leaving it as a purely numeric exercise.
+
+\section{What Notebook 04 Teaches}
+
+This notebook teaches a broader engineering lesson: do not replace curated data with automated extraction unless you have evidence that the replacement is superior. In this project, the dataset's human-cleaned text is treated as authoritative by default, and OCR is a fallback mechanism rather than a default preprocessing stage.
+
+\chapter{Cross-Notebook Patterns and Design Lessons}
+
+These notebooks share a few design patterns worth making explicit.
+
+\section{Each Notebook Is Self-Sufficient}
+
+Instead of relying on hidden state from previous notebooks, the code repeatedly re-detects dataset paths and reloads splits. That increases repetition, but it improves reliability. A notebook should ideally run correctly when opened on its own.
+
+\section{Environment Robustness Is Treated as Part of the Project}
+
+The project does not assume a perfect local machine. It supports Kaggle and local execution, CPU and GPU fallbacks, and multiple possible folder layouts. That makes the notebooks more robust and more transferable.
+
+\section{Analysis Precedes Modeling}
+
+This sequence is structurally sound:
+
+\begin{enumerate}[label=\arabic*.]
+\item verify the runtime,
+\item define the task,
+\item inspect data integrity,
+\item study data behavior,
+\item audit OCR quality,
+\item only then move into preprocessing and modeling.
+\end{enumerate}
+
+That order reduces the chance of building a model on top of misunderstood or degraded inputs.
+
+\section{The Project Is Already Framed as More Than a Benchmark}
+
+From notebook 01 onward, the repository is framed as an end-to-end moderation-aware system, not just a classifier. Explainability, counterfactuals, and human review are part of the planned pipeline, which is a mature framing for a socially sensitive task.
+
+\chapter{Concise Notebook-by-Notebook Summary}
+
+\begin{center}
+\begin{longtable}{p{0.18\textwidth}p{0.28\textwidth}p{0.44\textwidth}}
+\toprule
+Notebook & Main question & What the reader should learn \\
+\midrule
+00\_setup & Is the environment trustworthy? & How to validate paths, packages, devices, data files, imports, and checkpoints before doing analysis. \\
+01\_problem-scope & What exactly are we building, and why? & How to define the task, pick metrics, justify CLIP plus fusion, and set boundaries for responsible use. \\
+02\_data-inspection & What data do we actually have? & How to verify split sizes, class balance, image integrity, duplication, and raw sample quality. \\
+03\_eda & What patterns and risks exist in the corpus? & How to study class imbalance, text distributions, duplication, lexical signals, subgroup mentions, and shortcut risks. \\
+04\_ocr\_pipeline & Should we trust dataset text or rerun OCR? & How to audit text quality, sample EasyOCR, compare outputs, and adopt a fallback-only OCR strategy. \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\chapter{Final Interpretation}
+
+If someone reads these notebooks carefully from the beginning, the main intellectual story is this:
+
+\begin{enumerate}[label=\arabic*.]
+\item The project first establishes that the environment and dataset are valid.
+\item It then defines hateful meme detection as a multimodal binary classification problem with responsible-AI constraints.
+\item It verifies that the dataset is structurally clean: the split files load, image files exist, and text fields are populated.
+\item It studies the corpus deeply enough to identify imbalance, repetition, lexical skew, and subgroup-sensitive patterns.
+\item It confirms that the provided text field is good enough to use as the main textual signal, with OCR reserved for fallback cases.
+\end{enumerate}
+
+That progression is disciplined. It prevents premature modeling and gives later training notebooks a strong analytical foundation.
+
+\appendix
+
+\chapter{Key Numbers Used in This Report}
+
+The following values were extracted directly from the local dataset snapshot while preparing this guide:
+
+\begin{itemize}
+\item Split sizes: train 8,500; dev 500; test 1,000.
+\item Train balance: 5,450 non-hateful, 3,050 hateful.
+\item Dev balance: 250 non-hateful, 250 hateful.
+\item Missing images: 0.
+\item Corrupted images: 0.
+\item Duplicate train text strings by hash: 1,428.
+\item Mean word count: 11.74 overall, 11.15 non-hateful, 12.79 hateful.
+\item Median word count: 10.
+\item 95th percentile word count: 24.
+\item Mean character count: 62.08.
+\item OCR audit: all 8,500 training samples had non-empty text; 153 had two words or fewer.
+\end{itemize}
+
+\chapter{Suggested Reading Order for a Beginner}
+
+If you are new to this domain, the most effective reading order is:
+
+\begin{enumerate}[label=\arabic*.]
+\item Read notebook 01 first to understand the problem definition.
+\item Read notebook 00 second so you understand how the runtime is validated.
+\item Read notebook 02 to learn the raw dataset structure.
+\item Read notebook 03 slowly, because it contains the analytical intuition behind later modeling choices.
+\item Read notebook 04 last to understand why the project trusts the dataset text more than fresh OCR.
+\end{enumerate}
+
+That order is slightly different from execution order, but often better for conceptual understanding.
+
+\end{document}

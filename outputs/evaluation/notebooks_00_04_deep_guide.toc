@@ -1,0 +1,78 @@
+\contentsline {chapter}{\numberline {1}How to Read This Project From Scratch}{4}{chapter.1}%
+\contentsline {section}{\numberline {1.1}What Problem Is This Project Solving?}{4}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Why Not Just Use Text-Only or Image-Only Models?}{5}{section.1.2}%
+\contentsline {chapter}{\numberline {2}Prerequisites}{6}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Python and Notebook Basics}{6}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Machine Learning Prerequisites}{6}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Deep Learning Prerequisites}{7}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Dataset Prerequisites}{8}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Why OCR Matters at All}{8}{section.2.5}%
+\contentsline {chapter}{\numberline {3}Notebook 00: Environment Setup and Project Verification}{9}{chapter.3}%
+\contentsline {section}{\numberline {3.1}High-Level Goal}{9}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Cell Group 1: Dataset Path Detection}{9}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Cell Group 2: Reproducibility Seeding}{10}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Cell Group 3: Project Root Detection}{10}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Cell Group 4: Device Check}{11}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Cell Group 5: Package Verification}{11}{section.3.6}%
+\contentsline {section}{\numberline {3.7}Cell Group 6: Dataset File Verification}{11}{section.3.7}%
+\contentsline {section}{\numberline {3.8}Cell Group 7: Load One Sample}{12}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Cell Group 8: Source Module Import Check}{12}{section.3.9}%
+\contentsline {section}{\numberline {3.10}Cell Group 9: Config and Checkpoint Verification}{12}{section.3.10}%
+\contentsline {section}{\numberline {3.11}What Notebook 00 Teaches}{12}{section.3.11}%
+\contentsline {chapter}{\numberline {4}Notebook 01: Problem Scope and Design Decisions}{14}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Task Definition}{14}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Scope Boundary}{14}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Dataset Description}{15}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Success Metrics}{15}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Architecture Decisions}{15}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Imbalance Handling}{16}{section.4.6}%
+\contentsline {section}{\numberline {4.7}Responsible AI Layer}{16}{section.4.7}%
+\contentsline {section}{\numberline {4.8}Deliverables Framing}{16}{section.4.8}%
+\contentsline {section}{\numberline {4.9}Final Sanity Check Cell}{16}{section.4.9}%
+\contentsline {chapter}{\numberline {5}Notebook 02: Data Inspection and Verification}{17}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Why Data Inspection Comes Before EDA}{17}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Loading the Splits}{17}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Image Path Resolution}{17}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Class Balance Check}{18}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Image Existence and Corruption Check}{18}{section.5.5}%
+\contentsline {section}{\numberline {5.6}Duplicate and Leakage Checks}{18}{section.5.6}%
+\contentsline {section}{\numberline {5.7}Missing or Empty Text Fields}{19}{section.5.7}%
+\contentsline {section}{\numberline {5.8}Random Sample Inspection}{19}{section.5.8}%
+\contentsline {section}{\numberline {5.9}Image Resolution Analysis}{19}{section.5.9}%
+\contentsline {section}{\numberline {5.10}Modality-Need Analysis}{19}{section.5.10}%
+\contentsline {section}{\numberline {5.11}What Notebook 02 Teaches}{20}{section.5.11}%
+\contentsline {chapter}{\numberline {6}Notebook 03: Exploratory Data Analysis}{21}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Why EDA Matters Here}{21}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Class Distribution}{21}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Text Length Distributions}{22}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Detailed Text Statistics}{22}{section.6.4}%
+\contentsline {section}{\numberline {6.5}Violin Plots and Statistical Testing}{22}{section.6.5}%
+\contentsline {section}{\numberline {6.6}Vocabulary Richness}{22}{section.6.6}%
+\contentsline {section}{\numberline {6.7}Zipf-Law Visualization}{23}{section.6.7}%
+\contentsline {section}{\numberline {6.8}Bigram and Trigram Analysis}{23}{section.6.8}%
+\contentsline {section}{\numberline {6.9}Surface Characteristics}{23}{section.6.9}%
+\contentsline {section}{\numberline {6.10}Text Duplication and Overlap}{23}{section.6.10}%
+\contentsline {section}{\numberline {6.11}Word Frequencies and Word Clouds}{24}{section.6.11}%
+\contentsline {section}{\numberline {6.12}Demographic Mention Analysis}{24}{section.6.12}%
+\contentsline {section}{\numberline {6.13}Confounder Check}{24}{section.6.13}%
+\contentsline {section}{\numberline {6.14}What Notebook 03 Teaches}{25}{section.6.14}%
+\contentsline {chapter}{\numberline {7}Notebook 04: OCR Pipeline}{26}{chapter.7}%
+\contentsline {section}{\numberline {7.1}The Core Tension}{26}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Step 1: Audit Existing Text Quality}{26}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Step 2: Inspect Suspiciously Short Entries}{27}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Step 3: Install and Initialize EasyOCR}{27}{section.7.4}%
+\contentsline {section}{\numberline {7.5}Step 4: Compare Dataset Text With EasyOCR on a Sample}{27}{section.7.5}%
+\contentsline {section}{\numberline {7.6}Step 5: OCR Quality Heuristic}{27}{section.7.6}%
+\contentsline {section}{\numberline {7.7}Step 6: Final Decision Logic}{28}{section.7.7}%
+\contentsline {section}{\numberline {7.8}Step 7: Optional Full OCR Pass}{28}{section.7.8}%
+\contentsline {section}{\numberline {7.9}Step 8: Visual Overlay Output}{28}{section.7.9}%
+\contentsline {section}{\numberline {7.10}What Notebook 04 Teaches}{28}{section.7.10}%
+\contentsline {chapter}{\numberline {8}Cross-Notebook Patterns and Design Lessons}{29}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Each Notebook Is Self-Sufficient}{29}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Environment Robustness Is Treated as Part of the Project}{29}{section.8.2}%
+\contentsline {section}{\numberline {8.3}Analysis Precedes Modeling}{29}{section.8.3}%
+\contentsline {section}{\numberline {8.4}The Project Is Already Framed as More Than a Benchmark}{30}{section.8.4}%
+\contentsline {chapter}{\numberline {9}Concise Notebook-by-Notebook Summary}{31}{chapter.9}%
+\contentsline {chapter}{\numberline {10}Final Interpretation}{32}{chapter.10}%
+\contentsline {chapter}{\numberline {A}Key Numbers Used in This Report}{33}{appendix.A}%
+\contentsline {chapter}{\numberline {B}Suggested Reading Order for a Beginner}{34}{appendix.B}%
